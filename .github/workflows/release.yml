@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency: release-${{ github.ref }}
+
+jobs:
+  release:
+    name: Version or publish
+    runs-on: macos-15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify
+        run: pnpm run verify
+
+      - name: Create release PR or tag release
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm run version
+          publish: pnpm exec changeset tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package VSIX
+        if: steps.changesets.outputs.published == 'true'
+        run: pnpm run package
+
+      - name: Attach VSIX to GitHub release
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          gh release upload "apple-foundation-vscode@${version}" ./*.vsix --clobber
+
+      # Marketplace publishing is intentionally a manual gate until the
+      # publisher account is provisioned. See docs/release-process.md.
+      # - name: Publish to Marketplace
+      #   if: steps.changesets.outputs.published == 'true'
+      #   run: pnpm exec vsce publish --no-dependencies --target darwin-arm64 -p ${{ secrets.VSCE_PAT }}

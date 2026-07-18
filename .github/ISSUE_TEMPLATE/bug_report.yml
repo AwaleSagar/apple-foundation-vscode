@@ -1,0 +1,64 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly.
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much as you can —
+        the environment section matters a lot for this extension because it depends on
+        macOS, Apple Silicon, and Apple Intelligence being available.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open VS Code chat
+        2. Select "Apple Foundation Models" as the model
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: e.g. macOS 26.1 (Tahoe)
+    validations:
+      required: true
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version
+      placeholder: e.g. 1.104.0
+    validations:
+      required: true
+  - type: input
+    id: bridge-version
+    attributes:
+      label: Bridge CLI
+      description: Which bridge you use (`fm` on macOS 27+, or `afm`) and its version if known
+    validations:
+      required: false
+  - type: dropdown
+    id: apple-intelligence
+    attributes:
+      label: Is Apple Intelligence enabled in System Settings?
+      options:
+        - 'Yes'
+        - 'No'
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Run "Apple Foundation Models: Show Logs" and paste relevant output. Redact anything sensitive.
+      render: shell
