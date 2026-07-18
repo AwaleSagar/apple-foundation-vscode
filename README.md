@@ -2,6 +2,8 @@
 
 > Private, offline AI-assisted development powered by Apple's on-device Foundation Models.
 
+**No API key · No cloud · No account · Works in airplane mode · Your code never leaves your Mac**
+
 [![CI](https://github.com/AwaleSagar/apple-foundation-vscode/actions/workflows/ci.yml/badge.svg)](https://github.com/AwaleSagar/apple-foundation-vscode/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/AwaleSagar/apple-foundation-vscode/actions/workflows/codeql.yml/badge.svg)](https://github.com/AwaleSagar/apple-foundation-vscode/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -69,11 +71,9 @@ piece was chosen.
 
 ### Screenshots
 
-> 🚧 Placeholders — replace once the UI stabilizes.
-
-| Model picker | Chat streaming | Status command |
-| --- | --- | --- |
-| ![Model picker placeholder](docs/assets/screenshot-model-picker.png) | ![Chat placeholder](docs/assets/screenshot-chat.png) | ![Status placeholder](docs/assets/screenshot-status.png) |
+> 🚧 Coming with the first Marketplace release: the model picker showing **Apple On-Device**,
+> a streaming `@apple` chat turn, and `/commit` drafting a Conventional Commit — all with
+> Wi-Fi off. Tracked in [ROADMAP.md](ROADMAP.md) (Phase 1 release assets).
 
 ## Requirements
 

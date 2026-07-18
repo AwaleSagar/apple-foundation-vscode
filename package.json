@@ -37,12 +37,25 @@
   "packageManager": "pnpm@11.0.0",
   "main": "./dist/extension.js",
   "icon": "media/icon.png",
+  "pricing": "Free",
+  "galleryBanner": {
+    "color": "#1c1c1e",
+    "theme": "dark"
+  },
   "extensionKind": [
     "ui"
   ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": "limited",
+      "description": "Chat works everywhere; /commit requires a local git repository."
+    },
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "Inference runs against a machine-scoped local bridge; workspaces cannot influence which executable is spawned."
+    }
+  },
+  "activationEvents": [],
   "contributes": {
     "languageModelChatProviders": [
       {
@@ -77,19 +90,23 @@
     "commands": [
       {
         "command": "appleFoundation.manage",
-        "title": "Apple Foundation Models: Manage Provider"
+        "title": "Manage Provider",
+        "category": "Apple Foundation Models"
       },
       {
         "command": "appleFoundation.showStatus",
-        "title": "Apple Foundation Models: Show Status"
+        "title": "Show Status",
+        "category": "Apple Foundation Models"
       },
       {
         "command": "appleFoundation.restartServer",
-        "title": "Apple Foundation Models: Restart Bridge Server"
+        "title": "Restart Bridge Server",
+        "category": "Apple Foundation Models"
       },
       {
         "command": "appleFoundation.showLogs",
-        "title": "Apple Foundation Models: Show Logs"
+        "title": "Show Logs",
+        "category": "Apple Foundation Models"
       }
     ],
     "configuration": {
@@ -98,14 +115,16 @@
         "appleFoundation.bridge.executablePath": {
           "type": "string",
           "default": "fm",
-          "markdownDescription": "Path to the bridge CLI. Defaults to the `fm` CLI preinstalled on macOS 27+. On macOS 26, set this to `afm` (install via `brew install scouzi1966/afm/afm`)."
+          "scope": "machine",
+          "markdownDescription": "Path to the bridge CLI. Defaults to the `fm` CLI preinstalled on macOS 27+. On macOS 26, set this to `afm` (install via `brew install scouzi1966/afm/afm`). Machine-scoped: cannot be set by a workspace."
         },
         "appleFoundation.bridge.port": {
           "type": "number",
           "default": 9999,
           "minimum": 1024,
           "maximum": 65535,
-          "description": "Local port for the bridge server. The server binds to 127.0.0.1 only."
+          "scope": "machine",
+          "description": "Local port for the bridge server. The server binds to 127.0.0.1 only. Machine-scoped: cannot be set by a workspace."
         },
         "appleFoundation.bridge.autoStart": {
           "type": "boolean",
@@ -134,6 +153,7 @@
     "test:coverage": "vitest run --coverage",
     "verify": "pnpm run check && pnpm run typecheck && pnpm run test",
     "package": "vsce package --no-dependencies --target darwin-arm64",
+    "publish:marketplace": "vsce publish --no-dependencies --target darwin-arm64",
     "changeset": "changeset",
     "version": "changeset version",
     "prepare": "husky"

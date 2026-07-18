@@ -26,9 +26,10 @@ This extension's core promise is privacy, so its attack surface is deliberately 
   network call to the inference path is rejected on principle.
 - **Process spawning.** The only spawned executable is the user-configured
   `appleFoundation.bridge.executablePath` (default: the system `fm` CLI), executed with an
-  argument array and no shell, so settings cannot inject shell syntax. Users should treat this
-  setting like they treat their `PATH`: pointing it at a malicious binary is equivalent to
-  running that binary.
+  argument array and no shell, so settings cannot inject shell syntax. The setting (and the
+  bridge port) is **machine-scoped**: a workspace or repository can never override which binary
+  is spawned or where traffic goes — only the user's own settings can. Users should still treat
+  it like their `PATH`: pointing it at a malicious binary is equivalent to running that binary.
 - **Loopback server trust.** The bridge port is user-configurable; the extension assumes
   whatever answers on that loopback port is the user's chosen bridge. It never sends anything to
   it other than the chat content the user typed.
