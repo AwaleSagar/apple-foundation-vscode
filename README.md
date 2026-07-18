@@ -56,6 +56,8 @@ piece was chosen.
 ## Features
 
 - 🧠 **Native chat model** — "Apple On-Device" in the VS Code chat model picker
+- 💬 **`@apple` chat participant** — `/explain`, `/doc`, and `/commit` (writes a Conventional
+  Commit from your staged diff), all on-device
 - 🔌 **Automatic bridge management** — starts, monitors, and restarts the bridge server; reuses
   an already-running server without taking it over
 - 🍎 **Zero-install on macOS 27+** — uses the system `fm` CLI; no Homebrew required
@@ -164,12 +166,14 @@ AI-assisted contributions are explicitly supported — see
 
 ## Roadmap
 
-Highlights (full plan in [ROADMAP.md](ROADMAP.md)):
+Highlights (full plan in [ROADMAP.md](ROADMAP.md), deep rationale in the
+[research document](apple-fm-vscode-extension-roadmap.md)):
 
-- **v0.x** — chat provider, bridge lifecycle, diagnostics
-- **v1.0** — Marketplace release, inline completion experiment, status bar UI
-- **Later** — tool calling, guided-generation structured outputs, opt-in Private Cloud Compute
-  model, optional embedded Swift sidecar for deeper framework access
+- **MVP (now)** — chat provider, `@apple` participant, bridge lifecycle, diagnostics
+- **Beta** — workspace tools, embedding-free local RAG, MCP server, guided-generation
+  structured outputs, differentiator features (Privacy Redactor, Offline Log Triage)
+- **Later** — opt-in Private Cloud Compute tier, embedded Swift sidecar for vision and
+  persistent sessions, eval-gated releases
 
 ## FAQ
 

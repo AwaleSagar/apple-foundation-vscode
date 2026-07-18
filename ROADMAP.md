@@ -1,52 +1,72 @@
 # Roadmap
 
-Direction, not a contract. Items move as we learn; the ordering within each phase is rough
-priority. Proposals welcome via feature-request issues.
+Direction, not a contract. This roadmap follows the milestone plan in the full research
+document, [apple-fm-vscode-extension-roadmap.md](apple-fm-vscode-extension-roadmap.md)
+(§6 and §15) — read that for the deep rationale, feature brainstorm, and risk register.
+Items move as we learn; proposals welcome via feature-request issues.
 
 ## Guiding constraints
 
-Everything on this roadmap must preserve the core promise: **inference stays on-device**. Features
-that require cloud calls are out of scope permanently, not just deferred.
+Everything here must preserve the core promise: **inference stays on-device by default**.
+The only sanctioned exception is Apple's Private Cloud Compute (PCC) — cryptographically
+private, no API keys — and it stays strictly opt-in, clearly labeled, and hard-disabled by a
+future `offlineOnlyMode` setting.
 
-## Phase 0 — Foundation (current, v0.x)
+## Phase 0 — Discover & scaffold (M0) ✅ current
 
-- [x] Language Model Chat Provider registering "Apple On-Device"
-- [x] `afm` bridge lifecycle management (spawn, health check, reuse external server)
-- [x] Streaming responses with cancellation
-- [x] Status / restart / logs / manage commands
-- [x] Full engineering scaffold (CI, CodeQL, Changesets, Renovate)
-- [ ] Extension icon and Marketplace listing assets
-- [ ] Real screenshots in README
-- [ ] Integration test suite in the Extension Development Host (`@vscode/test-electron`)
+- [x] Capability spikes: `fm` CLI probed (`fm available`, `fm serve` endpoints, streaming verified
+      end-to-end against the on-device `system` model)
+- [x] Full engineering scaffold (pnpm 11, Biome 2, strict TS, esbuild, Vitest, Husky,
+      Commitlint, Changesets, Renovate, CodeQL, CI/release workflows)
+- [x] Platform gate: darwin + arm64 + Darwin ≥ 25 availability check with actionable messaging
+- [ ] Capability map: catalog what the ~3B on-device model handles well vs. poorly
+      (commit messages, explanation, log triage) using `fm chat`
 
-## Phase 1 — v1.0 (Marketplace release)
+## Phase 1 — MVP (M1–M3)
 
-- [ ] Publish to the VS Code Marketplace (`darwin-arm64` target) and Open VSX
-- [ ] Status bar item with bridge health and quick actions
-- [ ] Graceful onboarding: detect missing `afm` and offer guided install
-- [ ] Context-window management: warn and truncate transparently near the 4096-token limit
-- [ ] Setting for system prompt / instructions customization
+- [x] Language Model Chat Provider: "Apple On-Device" in the native model picker
+- [x] Bridge lifecycle: spawn `fm serve` (or `afm`) lazily, health checks, reuse external
+      servers, streaming SSE with first-class cancellation
+- [x] `@apple` chat participant with `/explain`, `/doc`, `/commit` (staged-diff aware) and
+      followups
+- [ ] Token budgeting: real counts via `fm token-count`, context-overflow recovery
+      (retrieve-few → summarize → answer; never hardcode the window)
+- [ ] Session reuse per chat thread to preserve multi-turn transcripts
+- [ ] Guardrail UX: detect safety rejections and surface actionable copy instead of retrying
+- [ ] Onboarding: detect missing/misconfigured bridge and offer guided setup
+- [ ] Marketplace release assets: icon, listing copy, airplane-mode demo GIF
+- [ ] Integration tests in a real Extension Host (`@vscode/test-electron` on `macos-15`)
 
-## Phase 2 — Deeper editor integration
+**MVP ship criteria** (per the research doc §15): install one VSIX, see "Apple On-Device" in
+the picker, chat offline with streaming, and generate a conventional commit from staged
+changes — no account, key, or setup beyond Apple Intelligence being on.
 
-- [ ] Inline completion provider experiment (latency-gated; on-device makes this plausible)
-- [x] Chat participant (`@apple`) with editor-context commands (`/explain`, `/doc`, `/commit`)
-- [ ] Structured outputs using the framework's guided generation via the bridge
-- [ ] Tool calling, when the bridge exposes it
+## Phase 2 — Beta: tools, RAG, MCP (M4–M6)
 
-## Phase 3 — Deeper framework access & polish
+- [ ] Language Model Tools: `readFile`, `searchWorkspace`, `getDiagnostics` with strict schemas
+      and confirmation for anything mutating
+- [ ] Embedding-free workspace RAG: ripgrep candidates → on-device rerank/answer
+- [ ] Structured outputs via guided generation (`fm schema` / JSON-schema `response_format`)
+- [ ] MCP server definition provider: expose `local_summarize`, `local_classify`,
+      `local_extract`, `local_redact` to any MCP-capable agent
+- [ ] Differentiator features (pick 3–4, each with an eval dataset): Privacy Redactor,
+      Always-On Commit Intelligence, Offline Log Triage, Semantic File Organizer
+- [ ] Inline completion experiment (latency-gated; free on-device tokens make it plausible)
 
-- [ ] Opt-in Private Cloud Compute model (`fm serve` exposes `pcc`: Apple's larger server model,
-      32K context, cryptographically private — off by default because it leaves the device)
-- [ ] Optional embedded Swift sidecar (stdio JSON-RPC) for capabilities the Chat Completions
-      protocol can't express — persistent sessions, guided generation, vision input
+## Phase 3 — Harden & launch (M7–M8)
+
+- [ ] Opt-in PCC model entry (32K context, `reasoningLevel`) + `offlineOnlyMode` that refuses
+      to construct it at all
+- [ ] Optional embedded Swift sidecar (stdio JSON-RPC, signed + notarized) for capabilities the
+      Chat Completions protocol can't express — persistent sessions, vision, dynamic profiles
       (revisits [ADR-0002](docs/adr/0002-bridge-cli.md))
-- [ ] Real token counting via `fm token-count` instead of the character heuristic
-- [ ] Model options surface (temperature, adapters if Apple exposes them)
+- [ ] Performance budgets measured in CI: warm first-token < 800 ms, commit message < 3 s
+- [ ] Python-SDK eval suites (JSONL datasets, LLM-as-judge rubrics) gating quality regressions
+- [ ] Marketplace stable + Open VSX, pre-release channel tracking macOS betas
 - [ ] Localization of user-facing strings
 
 ## Non-goals
 
 - Windows/Linux support — impossible without abandoning the on-device model
-- Cloud model fallback — breaks the privacy promise; other extensions do this well already
-- Telemetry of any kind
+- Third-party cloud model fallback — breaks the privacy promise; PCC opt-in is the only ladder
+- Telemetry of any kind — any metrics stay local and user-visible

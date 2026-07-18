@@ -7,6 +7,7 @@
 | [../DEVELOPMENT.md](../DEVELOPMENT.md) | Environment setup, debugging, quality gates |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Branching, commits, changesets, PR process |
 | [../ROADMAP.md](../ROADMAP.md) | Planned phases and non-goals |
+| [../apple-fm-vscode-extension-roadmap.md](../apple-fm-vscode-extension-roadmap.md) | Full research document: 2026 landscape, architecture options, M0–M8 plan, risks |
 | [../SECURITY.md](../SECURITY.md) | Security model and vulnerability reporting |
 | [coding-standards.md](coding-standards.md) | Code style, naming, folder organization, dependency policy |
 | [testing-strategy.md](testing-strategy.md) | What we test where, and why |

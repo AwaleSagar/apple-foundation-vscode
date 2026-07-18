@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { resolveWireModel } from '../bridge/client';
 import type { BridgeServerManager } from '../bridge/server';
 import { checkHost, currentHostInfo } from '../core/availability';
 import type { BridgeConfig } from '../core/config';
@@ -65,13 +66,7 @@ export class AppleFoundationChatProvider implements vscode.LanguageModelChatProv
   ): Promise<void> {
     const client = await this.server.ensureRunning();
     const config = this.getConfig();
-
-    // The wire model id differs per bridge ("system" for fm serve); ask the
-    // server rather than hardcoding, falling back to the fm default.
-    const wireModel = await client
-      .listModels()
-      .then((models) => (models.includes('system') ? 'system' : (models[0] ?? 'system')))
-      .catch(() => 'system');
+    const wireModel = await resolveWireModel(client);
 
     const abort = new AbortController();
     const cancellation = token.onCancellationRequested(() => abort.abort());
