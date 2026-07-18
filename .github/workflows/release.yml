@@ -53,7 +53,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           version="$(node -p "require('./package.json').version")"
-          gh release upload "apple-foundation-vscode@${version}" ./*.vsix --clobber
+          tag="apple-foundation-vscode@${version}"
+          # `changeset tag` creates the git tag but not a GitHub release, so
+          # create the release from the tag if it does not already exist.
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "$tag" --generate-notes
+          fi
+          gh release upload "$tag" ./*.vsix --clobber
 
       # Marketplace publishing is intentionally a manual gate until the
       # publisher account is provisioned. See docs/release-process.md.
