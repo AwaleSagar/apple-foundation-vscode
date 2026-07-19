@@ -49,9 +49,13 @@ changes — no account, key, or setup beyond Apple Intelligence being on.
 
 ## Phase 2 — Beta: tools, RAG, MCP (M4–M6)
 
-- [ ] Language Model Tools: `readFile`, `searchWorkspace`, `getDiagnostics` with strict schemas
-      and confirmation for anything mutating
-- [ ] Embedding-free workspace RAG: ripgrep candidates → on-device rerank/answer
+- [x] **Workspace editing MVP (E0–E1):** `EditPlan` parse/match engine, `@apple /edit`,
+      preview via `apple-fm-preview` + `vscode.diff`, Apply/Reject, rollback, path sandbox
+      ([ADR-0006](docs/adr/0006-on-device-code-editing.md))
+- [ ] Multi-file edit plans with `stream.filetree` polish (E2)
+- [ ] Language Model Tools: `readFile`, `searchWorkspace`, `getDiagnostics`, propose/apply
+      with strict schemas and confirmation for anything mutating (E3)
+- [ ] Embedding-free workspace RAG: ripgrep candidates → on-device rerank/answer (E4)
 - [ ] Structured outputs via guided generation (`fm schema` / JSON-schema `response_format`)
 - [ ] MCP server definition provider: expose `local_summarize`, `local_classify`,
       `local_extract`, `local_redact` to any MCP-capable agent

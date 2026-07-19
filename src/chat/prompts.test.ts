@@ -69,4 +69,21 @@ describe('buildMessages', () => {
     );
     expect(messages[1]?.content).toContain('Additional context: part of auth work');
   });
+
+  it('edit asks for JSON EditPlan and fences file content', () => {
+    const messages = buildMessages(
+      base({
+        command: 'edit',
+        prompt: 'add a null check',
+        filePath: 'src/a.ts',
+        fileContent: 'export const x = 1;',
+        languageId: 'typescript',
+      }),
+    );
+    expect(messages[0]?.content).toContain('SEARCH/REPLACE');
+    expect(messages[0]?.content).toContain('"summary"');
+    expect(messages[1]?.content).toContain('Current file: src/a.ts');
+    expect(messages[1]?.content).toContain('export const x = 1;');
+    expect(messages[1]?.content).toContain('add a null check');
+  });
 });

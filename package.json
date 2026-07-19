@@ -83,6 +83,10 @@
           {
             "name": "commit",
             "description": "%participant.commit.description%"
+          },
+          {
+            "name": "edit",
+            "description": "%participant.edit.description%"
           }
         ]
       }
@@ -111,6 +115,26 @@
       {
         "command": "appleFoundation.runOnboarding",
         "title": "%command.runOnboarding.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.editing.applyPlan",
+        "title": "%command.editing.applyPlan.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.editing.rejectPlan",
+        "title": "%command.editing.rejectPlan.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.editing.reviewDiff",
+        "title": "%command.editing.reviewDiff.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.editing.rollbackLast",
+        "title": "%command.editing.rollbackLast.title%",
         "category": "%category%"
       }
     ],
@@ -200,6 +224,56 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "%config.offlineOnlyMode.description%"
+        },
+        "appleFoundation.editing.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.editing.enabled.description%"
+        },
+        "appleFoundation.editing.requireConfirmation": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.editing.requireConfirmation.description%"
+        },
+        "appleFoundation.editing.maxFilesPerPlan": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "%config.editing.maxFilesPerPlan.description%"
+        },
+        "appleFoundation.editing.maxHunksPerFile": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "%config.editing.maxHunksPerFile.description%"
+        },
+        "appleFoundation.editing.maxWholeFileLines": {
+          "type": "number",
+          "default": 200,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "%config.editing.maxWholeFileLines.description%"
+        },
+        "appleFoundation.editing.allowFuzzyMatch": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.editing.allowFuzzyMatch.description%"
+        },
+        "appleFoundation.editing.deniedGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/.env*",
+            "**/.env",
+            "**/secrets/**",
+            "**/*.pem",
+            "**/*.key"
+          ],
+          "description": "%config.editing.deniedGlobs.description%"
         }
       }
     }

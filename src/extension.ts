@@ -4,6 +4,7 @@ import { registerChatParticipant } from './chat/participant';
 import { registerCommands, runOnboarding } from './commands';
 import { readBridgeConfig } from './core/config';
 import { createOutputChannel } from './core/logger';
+import { registerPreviewProvider } from './editing';
 import { AppleFoundationChatProvider } from './providers/chatProvider';
 import { registerStatusBar } from './ui/statusBar';
 
@@ -19,6 +20,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.lm.registerLanguageModelChatProvider('apple-foundation', provider),
   );
 
+  registerPreviewProvider(context);
   registerChatParticipant(context, server, outputChannel, readBridgeConfig);
   registerCommands(context, server, outputChannel, outputChannel);
   registerStatusBar(context, server);

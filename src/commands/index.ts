@@ -10,6 +10,13 @@ import {
   resolveExecutableOnPath,
 } from '../core/onboarding';
 import { countTokensWithCli, estimateTokens } from '../core/tokens';
+import {
+  applyStagedEdit,
+  clearStagedEdit,
+  getStagedEdit,
+  openAllStagedDiffs,
+  rollbackLastApplied,
+} from '../editing';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -18,6 +25,46 @@ export function registerCommands(
   logger: Logger,
 ): void {
   context.subscriptions.push(
+    vscode.commands.registerCommand('appleFoundation.editing.applyPlan', async () => {
+      const staged = getStagedEdit();
+      if (staged === undefined) {
+        void vscode.window.showWarningMessage('No staged Apple edit plan to apply.');
+        return;
+      }
+      const result = await applyStagedEdit();
+      if (result.applied) {
+        void vscode.window.showInformationMessage(
+          `Applied Apple edit: ${staged.plan.summary}. Use Undo or “Rollback Last Apple Edit” to reverse.`,
+        );
+        logger.info(`Applied edit plan (${result.outcomes.length} file(s)).`);
+      } else {
+        void vscode.window.showErrorMessage(result.error ?? 'Failed to apply edit plan.');
+        logger.error(`Apply edit failed: ${result.error ?? 'unknown'}`);
+      }
+    }),
+
+    vscode.commands.registerCommand('appleFoundation.editing.rejectPlan', () => {
+      if (getStagedEdit() === undefined) {
+        void vscode.window.showInformationMessage('No staged Apple edit plan.');
+        return;
+      }
+      clearStagedEdit();
+      void vscode.window.showInformationMessage('Rejected staged Apple edit plan.');
+    }),
+
+    vscode.commands.registerCommand('appleFoundation.editing.reviewDiff', async () => {
+      await openAllStagedDiffs();
+    }),
+
+    vscode.commands.registerCommand('appleFoundation.editing.rollbackLast', async () => {
+      const result = await rollbackLastApplied();
+      if (result.applied) {
+        void vscode.window.showInformationMessage('Rolled back the last Apple edit.');
+      } else {
+        void vscode.window.showWarningMessage(result.error ?? 'Nothing to roll back.');
+      }
+    }),
+
     vscode.commands.registerCommand('appleFoundation.showStatus', async () => {
       const host = currentHostInfo();
       const availability = checkHost(host);

@@ -4,7 +4,7 @@ import type { ChatMessage } from '../bridge/types';
  * Slash commands the `@apple` participant understands. A missing command means
  * a free-form chat turn.
  */
-export type ChatCommand = 'explain' | 'doc' | 'commit';
+export type ChatCommand = 'explain' | 'doc' | 'commit' | 'edit';
 
 /** Editor / VCS context gathered before a turn, all optional. */
 export interface TurnContext {
@@ -18,6 +18,13 @@ export interface TurnContext {
   readonly languageId?: string | undefined;
   /** Base name of the active file. */
   readonly fileName?: string | undefined;
+  /**
+   * Workspace-relative path of the active file (preferred for edit plans).
+   * Falls back to fileName when the workspace root is unknown.
+   */
+  readonly filePath?: string | undefined;
+  /** Full text of the active document (budgeted by caller for /edit). */
+  readonly fileContent?: string | undefined;
   /** Staged git diff, used by `/commit`. */
   readonly diff?: string | undefined;
 }
@@ -108,6 +115,40 @@ function chatMessages(ctx: TurnContext): ChatMessage[] {
 }
 
 /**
+ * Edit system prompt — keep byte-stable across turns for KV-cache.
+ * Instructs the small on-device model to emit a structured EditPlan JSON only.
+ */
+const EDIT_SYSTEM =
+  `${BASE_RULES} You propose precise code edits for the developer\u2019s workspace. ` +
+  'Never invent file contents you were not shown. Prefer small SEARCH/REPLACE hunks over rewriting whole files. ' +
+  'Respond with a single JSON object only (no prose outside JSON) with this shape:\n' +
+  '{"summary":"short reason","changes":[{"path":"relative/path.ts","action":"update","hunks":[{"search":"exact old text","replace":"new text"}]}]}\n' +
+  'Rules: search must match the file exactly (copy from the provided source); include enough context lines to be unique; ' +
+  'action is update|create|delete; for create use wholeFile instead of hunks; path must be workspace-relative; ' +
+  'do not escape into markdown fences if you can avoid it — raw JSON is fine.';
+
+function editMessages(ctx: TurnContext): ChatMessage[] {
+  const parts: string[] = [];
+  const pathLabel = ctx.filePath ?? ctx.fileName ?? 'active file';
+  if (ctx.fileContent !== undefined && ctx.fileContent.trim() !== '') {
+    parts.push(fenceBlock(`Current file: ${pathLabel}`, ctx.fileContent, ctx.languageId));
+  }
+  if (ctx.selection !== undefined && ctx.selection.trim() !== '') {
+    parts.push(fenceBlock('Focus selection (prefer editing here)', ctx.selection, ctx.languageId));
+  }
+  const instruction =
+    ctx.prompt.trim() === ''
+      ? 'Propose a minimal edit plan for the focused selection or file.'
+      : ctx.prompt.trim();
+  parts.push(instruction);
+  parts.push(`Target path for updates: ${pathLabel}`);
+  return [
+    { role: 'system', content: EDIT_SYSTEM },
+    { role: 'user', content: parts.join('\n\n') },
+  ];
+}
+
+/**
  * Build the wire messages for a participant turn. Pure and side-effect free so
  * it can be unit tested without VS Code or the bridge.
  */
@@ -119,6 +160,8 @@ export function buildMessages(ctx: TurnContext): ChatMessage[] {
       return docMessages(ctx);
     case 'commit':
       return commitMessages(ctx);
+    case 'edit':
+      return editMessages(ctx);
     default:
       return chatMessages(ctx);
   }

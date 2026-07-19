@@ -16,15 +16,14 @@ describe('normalizeBridgeConfig', () => {
       idleTimeoutMinutes: 10,
       offlineOnlyMode: true,
     });
-    expect(config).toEqual({
-      executablePath: '/opt/homebrew/bin/afm',
-      port: 8080,
-      autoStart: false,
-      maxOutputTokens: 512,
-      maxContextTokens: 8192,
-      idleTimeoutMinutes: 10,
-      offlineOnlyMode: true,
-    });
+    expect(config.executablePath).toBe('/opt/homebrew/bin/afm');
+    expect(config.port).toBe(8080);
+    expect(config.autoStart).toBe(false);
+    expect(config.maxOutputTokens).toBe(512);
+    expect(config.maxContextTokens).toBe(8192);
+    expect(config.idleTimeoutMinutes).toBe(10);
+    expect(config.offlineOnlyMode).toBe(true);
+    expect(config.editing.enabled).toBe(true);
   });
 
   it('clamps out-of-range ports', () => {

@@ -48,16 +48,17 @@ keep the chat interface they already know ([ADR-0003](docs/adr/0003-language-mod
 | --- | --- | --- |
 | `src/extension.ts` | Composition root: wire dependencies, register disposables | everything |
 | `src/providers/` | Adapt VS Code's LM provider API to the bridge | `bridge`, `core` |
-| `src/chat/` | `@apple` participant, prompts, git staged-diff, history | `bridge`, `core` |
-| `src/commands/` | User-facing commands (status, restart, logs, manage, setup) | `bridge`, `core` |
+| `src/chat/` | `@apple` participant, prompts, git staged-diff, history | `bridge`, `core`, `editing` |
+| `src/editing/` | EditPlan parse/match, preview, WorkspaceEdit apply, path sandbox | `core` (pure match/parse need nothing) |
+| `src/commands/` | User-facing commands (status, restart, logs, manage, setup, edit apply) | `bridge`, `core`, `editing` |
 | `src/ui/` | Passive UI surfaces (status bar) | `bridge`, `core` |
 | `src/bridge/` | Talk to / manage the bridge process. No VS Code UI imports | `core` |
 | `src/core/` | Config, logging, availability, tokens, errors, onboarding, history | nothing internal |
 | `src/test/` | Unit tests + `vscode` stub | anything |
 
-Dependency direction is strictly downward (`extension → providers/commands → bridge → core`).
-There are no cycles, and `bridge`/`core` logic is written as pure functions or thin classes so
-it is unit-testable without an editor.
+Dependency direction is strictly downward (`extension → providers/commands/chat → editing/bridge → core`).
+There are no cycles. Pure edit logic (`parse`, `match`, `indent`, `paths`, `resolve`) stays free of
+`vscode` so it is unit-testable without an editor; apply/preview are thin VS Code adapters.
 
 ## Key flows
 
@@ -125,3 +126,4 @@ Full policy: [SECURITY.md](SECURITY.md).
 | [0003](docs/adr/0003-language-model-chat-provider.md) | Integrate via Language Model Chat Provider API |
 | [0004](docs/adr/0004-toolchain.md) | pnpm + Biome + esbuild + Vitest toolchain |
 | [0005](docs/adr/0005-release-automation.md) | Changesets + GitHub Actions release automation |
+| [0006](docs/adr/0006-on-device-code-editing.md) | WorkspaceEdit + EditPlan for on-device code editing |

@@ -41,10 +41,68 @@ export interface ChatContext {
   readonly history: readonly (ChatRequestTurn | ChatResponseTurn)[];
 }
 
+export class Uri {
+  static file(path: string): Uri {
+    return new Uri('file', path);
+  }
+  static from(components: { scheme: string; path: string }): Uri {
+    return new Uri(components.scheme, components.path);
+  }
+  constructor(
+    readonly scheme: string,
+    readonly path: string,
+  ) {}
+  get fsPath(): string {
+    return this.path;
+  }
+}
+
+export class Position {
+  constructor(
+    readonly line: number,
+    readonly character: number,
+  ) {}
+}
+
+export class Range {
+  constructor(
+    readonly start: Position,
+    readonly end: Position,
+  ) {}
+}
+
+export class WorkspaceEdit {
+  replace(): void {}
+  insert(): void {}
+  delete(): void {}
+  createFile(): void {}
+  deleteFile(): void {}
+}
+
+export class EventEmitter<T> {
+  readonly event = (_listener: (e: T) => void) => ({ dispose: () => undefined });
+  fire(_data: T): void {}
+}
+
 export const workspace = {
   getConfiguration: () => ({
     get: () => undefined,
   }),
+  workspaceFolders: undefined as { uri: Uri; name: string; index: number }[] | undefined,
+  isTrusted: true,
+  textDocuments: [] as { uri: Uri; getText: () => string; positionAt: (o: number) => Position }[],
+  applyEdit: async () => true,
+  openTextDocument: async () => ({
+    getText: () => '',
+    positionAt: (o: number) => new Position(0, o),
+    uri: Uri.file('/tmp'),
+  }),
+  fs: {
+    readFile: async () => new Uint8Array(),
+  },
+  registerTextDocumentContentProvider: () => ({ dispose: () => undefined }),
+  asRelativePath: (uri: Uri | string) => (typeof uri === 'string' ? uri : uri.path),
+  getWorkspaceFolder: () => undefined,
 };
 
 export const window = {
