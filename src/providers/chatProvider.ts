@@ -2,15 +2,11 @@ import * as vscode from 'vscode';
 import { resolveWireModel } from '../bridge/client';
 import type { BridgeServerManager } from '../bridge/server';
 import { checkHost, currentHostInfo } from '../core/availability';
-import type { BridgeConfig } from '../core/config';
+import { type BridgeConfig, maxInputTokens } from '../core/config';
+import { asBridgeError, formatErrorForUser } from '../core/errors';
 import type { Logger } from '../core/logger';
-import { estimateTokens, toBridgeMessages } from './messages';
-
-/**
- * Apple's on-device model has a 4096-token context window shared between
- * input and output.
- */
-const CONTEXT_WINDOW_TOKENS = 4096;
+import { fitMessagesToBudget } from '../core/tokens';
+import { estimateTokens, flattenForTokenCount, toBridgeMessages } from './messages';
 
 export const APPLE_MODEL_ID = 'apple-on-device';
 
@@ -39,16 +35,17 @@ export class AppleFoundationChatProvider implements vscode.LanguageModelChatProv
     }
 
     const config = this.getConfig();
+    const contextWindow = config.maxContextTokens;
     return [
       {
         id: APPLE_MODEL_ID,
         name: 'Apple On-Device',
         family: 'apple-foundation',
         version: '1.0.0',
-        maxInputTokens: CONTEXT_WINDOW_TOKENS - config.maxOutputTokens,
+        maxInputTokens: maxInputTokens(config),
         maxOutputTokens: config.maxOutputTokens,
         tooltip: 'Apple Foundation Models — private, on-device inference',
-        detail: 'On-device · offline · private',
+        detail: `On-device · offline · private · ${contextWindow} context`,
         capabilities: {
           imageInput: false,
           toolCalling: false,
@@ -64,10 +61,26 @@ export class AppleFoundationChatProvider implements vscode.LanguageModelChatProv
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
   ): Promise<void> {
-    const client = await this.server.ensureRunning();
     const config = this.getConfig();
-    const wireModel = await resolveWireModel(client);
+    let client: Awaited<ReturnType<BridgeServerManager['ensureRunning']>>;
+    try {
+      client = await this.server.ensureRunning();
+    } catch (error) {
+      const bridgeError = asBridgeError(error);
+      this.logger.error(`Bridge unavailable: ${bridgeError.message}`);
+      throw new Error(formatErrorForUser(bridgeError));
+    }
 
+    const wireModel = await resolveWireModel(client);
+    const budgeted = fitMessagesToBudget(toBridgeMessages(messages), maxInputTokens(config));
+    if (budgeted.trimmed) {
+      this.logger.info(
+        `Trimmed chat messages to fit context budget (~${budgeted.estimatedTokens} input tokens).`,
+      );
+    }
+
+    // Hold the idle timer open for the whole stream, not just request start.
+    const release = this.server.beginRequest();
     const abort = new AbortController();
     const cancellation = token.onCancellationRequested(() => abort.abort());
 
@@ -75,7 +88,7 @@ export class AppleFoundationChatProvider implements vscode.LanguageModelChatProv
       const stream = client.streamChat(
         {
           model: wireModel,
-          messages: toBridgeMessages(messages),
+          messages: budgeted.messages,
           stream: true,
           max_tokens: config.maxOutputTokens,
         },
@@ -86,11 +99,12 @@ export class AppleFoundationChatProvider implements vscode.LanguageModelChatProv
       }
     } catch (error) {
       if (!token.isCancellationRequested) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Chat request failed: ${message}`);
-        throw error;
+        const bridgeError = asBridgeError(error);
+        this.logger.error(`Chat request failed [${bridgeError.code}]: ${bridgeError.message}`);
+        throw new Error(formatErrorForUser(bridgeError));
       }
     } finally {
+      release();
       cancellation.dispose();
     }
   }
@@ -100,16 +114,8 @@ export class AppleFoundationChatProvider implements vscode.LanguageModelChatProv
     text: string | vscode.LanguageModelChatRequestMessage,
     _token: vscode.CancellationToken,
   ): Promise<number> {
-    if (typeof text === 'string') {
-      return estimateTokens(text);
-    }
-    const flattened = text.content
-      .filter(
-        (part): part is vscode.LanguageModelTextPart =>
-          part instanceof vscode.LanguageModelTextPart,
-      )
-      .map((part) => part.value)
-      .join('');
-    return estimateTokens(flattened);
+    // Fast estimator only — provideTokenCount is hot; exact CLI counts are
+    // surfaced via the status command instead.
+    return estimateTokens(flattenForTokenCount(text));
   }
 }

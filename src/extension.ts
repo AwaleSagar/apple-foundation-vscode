@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { BridgeServerManager } from './bridge/server';
 import { registerChatParticipant } from './chat/participant';
-import { registerCommands } from './commands';
+import { registerCommands, runOnboarding } from './commands';
 import { readBridgeConfig } from './core/config';
 import { createOutputChannel } from './core/logger';
 import { AppleFoundationChatProvider } from './providers/chatProvider';
@@ -19,8 +19,13 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   registerChatParticipant(context, server, outputChannel, readBridgeConfig);
-
   registerCommands(context, server, outputChannel, outputChannel);
+
+  // Non-blocking setup check — never delay activation for PATH probes / UI.
+  void runOnboarding(context, outputChannel).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    outputChannel.warn(`Onboarding check failed: ${message}`);
+  });
 
   outputChannel.info('Apple Foundation Models extension activated');
 }

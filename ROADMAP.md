@@ -12,7 +12,7 @@ The only sanctioned exception is Apple's Private Cloud Compute (PCC) — cryptog
 private, no API keys — and it stays strictly opt-in, clearly labeled, and hard-disabled by a
 future `offlineOnlyMode` setting.
 
-## Phase 0 — Discover & scaffold (M0) ✅ current
+## Phase 0 — Discover & scaffold (M0) ✅
 
 - [x] Capability spikes: `fm` CLI probed (`fm available`, `fm serve` endpoints, streaming verified
       end-to-end against the on-device `system` model)
@@ -22,20 +22,22 @@ future `offlineOnlyMode` setting.
 - [ ] Capability map: catalog what the ~3B on-device model handles well vs. poorly
       (commit messages, explanation, log triage) using `fm chat`
 
-## Phase 1 — MVP (M1–M3)
+## Phase 1 — MVP (M1–M3) ✅ current
 
 - [x] Language Model Chat Provider: "Apple On-Device" in the native model picker
 - [x] Bridge lifecycle: spawn `fm serve` (or `afm`) lazily, health checks, reuse external
-      servers, streaming SSE with first-class cancellation
+      servers, streaming SSE with first-class cancellation, idle shutdown for owned processes
 - [x] `@apple` chat participant with `/explain`, `/doc`, `/commit` (staged-diff aware) and
       followups
-- [ ] Token budgeting: real counts via `fm token-count`, context-overflow recovery
-      (retrieve-few → summarize → answer; never hardcode the window)
-- [ ] Session reuse per chat thread to preserve multi-turn transcripts
-- [ ] Guardrail UX: detect safety rejections and surface actionable copy instead of retrying
-- [ ] Onboarding: detect missing/misconfigured bridge and offer guided setup
-- [ ] Marketplace release assets: icon, listing copy, airplane-mode demo GIF
-- [ ] Integration tests in a real Extension Host (`@vscode/test-electron` on `macos-15`)
+- [x] Token budgeting: `fitMessagesToBudget` input trimming + `fm token-count` via status
+      diagnostics; configurable `maxContextTokens` (never a single hardcoded window at call sites)
+- [x] Session reuse per chat thread: free-form `@apple` turns prepend VS Code chat history
+- [x] Guardrail UX: typed `BridgeError` codes (`GUARDRAIL`, `CONTEXT_OVERFLOW`, …) with
+      actionable copy
+- [x] Onboarding: first-run PATH/host check + `Apple Foundation Models: Run Setup Check`
+- [x] Marketplace release assets: icon + listing copy (demo GIF still tracked for publish day)
+- [x] Live bridge integration tests (`src/bridge/client.integration.test.ts` against `fm serve`
+      when available); Extension Host suite (`@vscode/test-electron`) still planned
 
 **MVP ship criteria** (per the research doc §15): install one VSIX, see "Apple On-Device" in
 the picker, chat offline with streaming, and generate a conventional commit from staged

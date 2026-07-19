@@ -22,8 +22,9 @@ confirmed issues. Credit is given in the release notes unless you prefer otherwi
 This extension's core promise is privacy, so its attack surface is deliberately tiny:
 
 - **No network egress.** The extension communicates only with a bridge server on `127.0.0.1`.
-  There is no telemetry, no update pinging, no cloud inference. Any PR adding an outbound
-  network call to the inference path is rejected on principle.
+  When this extension starts `fm serve`, it passes `--host 127.0.0.1` so the process binds
+  loopback-only. There is no telemetry, no update pinging, no cloud inference. Any PR adding
+  an outbound network call to the inference path is rejected on principle.
 - **Process spawning.** The only spawned executable is the user-configured
   `appleFoundation.bridge.executablePath` (default: the system `fm` CLI), executed with an
   argument array and no shell, so settings cannot inject shell syntax. The setting (and the

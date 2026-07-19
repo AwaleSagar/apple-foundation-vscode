@@ -107,6 +107,11 @@
         "command": "appleFoundation.showLogs",
         "title": "Show Logs",
         "category": "Apple Foundation Models"
+      },
+      {
+        "command": "appleFoundation.runOnboarding",
+        "title": "Run Setup Check",
+        "category": "Apple Foundation Models"
       }
     ],
     "configuration": {
@@ -131,12 +136,26 @@
           "default": true,
           "description": "Automatically start the bridge server when a chat request needs it."
         },
+        "appleFoundation.bridge.idleTimeoutMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 0,
+          "maximum": 120,
+          "description": "Stop a bridge process this extension started after this many minutes idle. 0 disables idle shutdown. Never kills a user-started bridge."
+        },
         "appleFoundation.model.maxOutputTokens": {
           "type": "number",
           "default": 1024,
           "minimum": 16,
-          "maximum": 4096,
+          "maximum": 8192,
           "description": "Maximum tokens the model may produce per response."
+        },
+        "appleFoundation.model.maxContextTokens": {
+          "type": "number",
+          "default": 4096,
+          "minimum": 512,
+          "maximum": 32768,
+          "markdownDescription": "Shared context window (input + output) used for budgeting. Raise if your on-device model reports a larger window; lower on memory-constrained machines."
         }
       }
     }

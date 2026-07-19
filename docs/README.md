@@ -8,6 +8,7 @@
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Branching, commits, changesets, PR process |
 | [../ROADMAP.md](../ROADMAP.md) | Planned phases and non-goals |
 | [../apple-fm-vscode-extension-roadmap.md](../apple-fm-vscode-extension-roadmap.md) | Full research document: 2026 landscape, architecture options, M0–M8 plan, risks |
+| [apple-fm-reference.md](apple-fm-reference.md) | Distilled Apple FoundationModels facts: model versions, token/KV-cache rules, error taxonomy mapping, capability gaps |
 | [../SECURITY.md](../SECURITY.md) | Security model and vulnerability reporting |
 | [coding-standards.md](coding-standards.md) | Code style, naming, folder organization, dependency policy |
 | [testing-strategy.md](testing-strategy.md) | What we test where, and why |

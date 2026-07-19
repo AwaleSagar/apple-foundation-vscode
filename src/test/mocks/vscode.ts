@@ -21,6 +21,26 @@ export interface LanguageModelChatRequestMessage {
   readonly name: string | undefined;
 }
 
+export class MarkdownString {
+  constructor(public value: string) {}
+}
+
+export class ChatRequestTurn {
+  constructor(readonly prompt: string) {}
+}
+
+export class ChatResponseMarkdownPart {
+  constructor(readonly value: MarkdownString) {}
+}
+
+export class ChatResponseTurn {
+  constructor(readonly response: readonly ChatResponseMarkdownPart[]) {}
+}
+
+export interface ChatContext {
+  readonly history: readonly (ChatRequestTurn | ChatResponseTurn)[];
+}
+
 export const workspace = {
   getConfiguration: () => ({
     get: () => undefined,
@@ -31,4 +51,38 @@ export const window = {
   showInformationMessage: () => Promise.resolve(undefined),
   showWarningMessage: () => Promise.resolve(undefined),
   showErrorMessage: () => Promise.resolve(undefined),
+  createOutputChannel: () => ({
+    trace: () => undefined,
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    show: () => undefined,
+    dispose: () => undefined,
+  }),
+};
+
+export const commands = {
+  registerCommand: () => ({ dispose: () => undefined }),
+  executeCommand: () => Promise.resolve(undefined),
+};
+
+export const lm = {
+  registerLanguageModelChatProvider: () => ({ dispose: () => undefined }),
+};
+
+export const chat = {
+  createChatParticipant: () => ({
+    iconPath: undefined,
+    followupProvider: undefined,
+    dispose: () => undefined,
+  }),
+};
+
+export class ThemeIcon {
+  constructor(readonly id: string) {}
+}
+
+export const extensions = {
+  getExtension: () => undefined,
 };

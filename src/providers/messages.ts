@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import type { ChatMessage } from '../bridge/types';
 
+export { estimateTokens } from '../core/tokens';
+
 /**
  * Convert VS Code chat request messages to the OpenAI-compatible wire format.
  *
@@ -35,9 +37,19 @@ function toRole(role: vscode.LanguageModelChatMessageRole): ChatMessage['role'] 
 }
 
 /**
- * Cheap token estimate (~4 characters per token). The bridge exposes no
- * tokenizer endpoint, and VS Code only needs an approximation for budgeting.
+ * Flatten a LanguageModelChatRequestMessage (or plain string) to text for
+ * token counting. Pure helper shared by the provider.
  */
-export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
+export function flattenForTokenCount(
+  text: string | vscode.LanguageModelChatRequestMessage,
+): string {
+  if (typeof text === 'string') {
+    return text;
+  }
+  return text.content
+    .filter(
+      (part): part is vscode.LanguageModelTextPart => part instanceof vscode.LanguageModelTextPart,
+    )
+    .map((part) => part.value)
+    .join('');
 }

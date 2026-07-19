@@ -48,9 +48,10 @@ keep the chat interface they already know ([ADR-0003](docs/adr/0003-language-mod
 | --- | --- | --- |
 | `src/extension.ts` | Composition root: wire dependencies, register disposables | everything |
 | `src/providers/` | Adapt VS Code's LM provider API to the bridge | `bridge`, `core` |
-| `src/commands/` | User-facing commands (status, restart, logs, manage) | `bridge`, `core` |
-| `src/bridge/` | Talk to / manage the bridge process. No VS Code UI imports | `core` types only |
-| `src/core/` | Config, logging, host availability. Leaf modules | nothing internal |
+| `src/chat/` | `@apple` participant, prompts, git staged-diff, history | `bridge`, `core` |
+| `src/commands/` | User-facing commands (status, restart, logs, manage, setup) | `bridge`, `core` |
+| `src/bridge/` | Talk to / manage the bridge process. No VS Code UI imports | `core` |
+| `src/core/` | Config, logging, availability, tokens, errors, onboarding, history | nothing internal |
 | `src/test/` | Unit tests + `vscode` stub | anything |
 
 Dependency direction is strictly downward (`extension → providers/commands → bridge → core`).
@@ -81,7 +82,21 @@ This keeps the model out of the picker on unsupported machines instead of failin
 
 The manager only kills processes it spawned. If a user runs `fm serve` (or `afm`) themselves,
 the health check finds it and the extension becomes a pure client — restarts and disposal leave
-the user's process alone.
+the user's process alone. Owned processes also stop after `appleFoundation.bridge.idleTimeoutMinutes`
+of idle time (default 5) to free unified memory; set to `0` to keep the bridge warm forever.
+
+### Context budgeting & multi-turn
+
+`fitMessagesToBudget` (in `core/tokens.ts`) drops oldest non-system turns, then truncates large
+payloads, so oversized selections and long threads degrade gracefully instead of 413/guardrail
+noise. The `@apple` participant prepends VS Code chat history for free-form turns; slash commands
+remain one-shot so `/commit` and `/doc` stay deterministic.
+
+### Error taxonomy
+
+Failures are classified into `BridgeError` codes (`BRIDGE_UNAVAILABLE`, `GUARDRAIL`,
+`CONTEXT_OVERFLOW`, …) with optional actionable copy. HTTP bodies from the bridge are scanned for
+safety/overflow markers before falling back to generic HTTP errors.
 
 ## Error handling philosophy
 

@@ -2,9 +2,13 @@ import * as vscode from 'vscode';
 import { resolveWireModel } from '../bridge/client';
 import type { BridgeServerManager } from '../bridge/server';
 import { checkHost, currentHostInfo } from '../core/availability';
-import type { BridgeConfig } from '../core/config';
+import { type BridgeConfig, maxInputTokens } from '../core/config';
+import { asBridgeError, formatErrorForUser } from '../core/errors';
+import { prependHistory } from '../core/history';
 import type { Logger } from '../core/logger';
+import { fitMessagesToBudget } from '../core/tokens';
 import { getStagedDiff } from './git';
+import { historyFromChatContext } from './historyFromVscode';
 import { buildMessages, type TurnContext } from './prompts';
 
 export const PARTICIPANT_ID = 'apple-foundation.chat';
@@ -65,7 +69,7 @@ export function registerChatParticipant(
 ): void {
   const handler: vscode.ChatRequestHandler = async (
     request,
-    _chatContext,
+    chatContext,
     stream,
     token,
   ): Promise<AppleChatResult> => {
@@ -87,26 +91,45 @@ export function registerChatParticipant(
     }
 
     const turn = await buildTurnContext(request);
-    const messages = buildMessages(turn);
     const config = getConfig();
+    // Slash commands are one-shot (fresh system prompt); free-form chat reuses thread history.
+    const history =
+      request.command === undefined || request.command === ''
+        ? historyFromChatContext(chatContext)
+        : [];
+    const withHistory = prependHistory(buildMessages(turn), history);
+    const budgeted = fitMessagesToBudget(withHistory, maxInputTokens(config));
+    if (budgeted.trimmed) {
+      logger.info(
+        `Trimmed @apple turn to fit context (~${budgeted.estimatedTokens} input tokens).`,
+      );
+      stream.markdown('_Earlier context was trimmed to fit the on-device model window._\n\n');
+    }
 
     let client: Awaited<ReturnType<BridgeServerManager['ensureRunning']>>;
     try {
       client = await server.ensureRunning();
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error(`Bridge unavailable for participant: ${message}`);
-      stream.markdown(`Could not reach the Apple Foundation Models bridge.\n\n${message}`);
-      return { errorDetails: { message }, metadata: meta };
+      const bridgeError = asBridgeError(error);
+      logger.error(`Bridge unavailable for participant: ${bridgeError.message}`);
+      stream.markdown(formatErrorForUser(bridgeError));
+      return { errorDetails: { message: bridgeError.message }, metadata: meta };
     }
 
     const wireModel = await resolveWireModel(client);
+    // Hold the idle timer open for the whole stream, not just request start.
+    const release = server.beginRequest();
     const abort = new AbortController();
     const cancellation = token.onCancellationRequested(() => abort.abort());
 
     try {
       const deltas = client.streamChat(
-        { model: wireModel, messages, stream: true, max_tokens: config.maxOutputTokens },
+        {
+          model: wireModel,
+          messages: budgeted.messages,
+          stream: true,
+          max_tokens: config.maxOutputTokens,
+        },
         abort.signal,
       );
       for await (const delta of deltas) {
@@ -114,12 +137,13 @@ export function registerChatParticipant(
       }
     } catch (error) {
       if (!token.isCancellationRequested) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.error(`Participant request failed: ${message}`);
-        stream.markdown(`\n\nRequest failed: ${message}`);
-        return { errorDetails: { message }, metadata: meta };
+        const bridgeError = asBridgeError(error);
+        logger.error(`Participant request failed [${bridgeError.code}]: ${bridgeError.message}`);
+        stream.markdown(`\n\n${formatErrorForUser(bridgeError)}`);
+        return { errorDetails: { message: bridgeError.message }, metadata: meta };
       }
     } finally {
+      release();
       cancellation.dispose();
     }
 

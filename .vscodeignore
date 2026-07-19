@@ -13,6 +13,7 @@ biome.json
 commitlint.config.mjs
 renovate.json
 pnpm-lock.yaml
+pnpm-workspace.yaml
 .editorconfig
 .gitignore
 .gitattributes
@@ -20,6 +21,7 @@ pnpm-lock.yaml
 .npmrc
 **/*.map
 **/*.test.ts
+**/*.integration.test.ts
 apple-fm-vscode-extension-roadmap.md
 CONTRIBUTING.md
 ARCHITECTURE.md
@@ -27,3 +29,4 @@ DEVELOPMENT.md
 ROADMAP.md
 SECURITY.md
 CODE_OF_CONDUCT.md
+*.vsix

@@ -59,15 +59,20 @@ piece was chosen.
 
 - 🧠 **Native chat model** — "Apple On-Device" in the VS Code chat model picker
 - 💬 **`@apple` chat participant** — `/explain`, `/doc`, and `/commit` (writes a Conventional
-  Commit from your staged diff), all on-device
-- 🔌 **Automatic bridge management** — starts, monitors, and restarts the bridge server; reuses
-  an already-running server without taking it over
+  Commit from your staged diff), multi-turn free-form chat, all on-device
+- 🔌 **Automatic bridge management** — starts, monitors, idle-shuts-down, and restarts the bridge;
+  reuses an already-running server without taking it over
+- 🧮 **Context budgeting** — trims history/large selections to the on-device window; optional exact
+  counts via `fm token-count` in status diagnostics
+- 🛡️ **Guardrail-aware errors** — safety rejections and context overflows surface with actionable
+  copy instead of opaque HTTP failures
+- 🧭 **Guided setup** — first-run check when the host or bridge CLI is missing
 - 🍎 **Zero-install on macOS 27+** — uses the system `fm` CLI; no Homebrew required
 - 📡 **Streaming responses** — token-by-token output via Server-Sent Events
 - 🩺 **Status & diagnostics** — `Apple Foundation Models: Show Status` command and a dedicated
   log output channel
-- 🔒 **Loopback-only by design** — no network egress on the inference path, enforced in code review
-  and CI culture (see [SECURITY.md](SECURITY.md))
+- 🔒 **Loopback-only by design** — binds `fm serve` to `127.0.0.1`; no network egress on the
+  inference path (see [SECURITY.md](SECURITY.md))
 
 ### Screenshots
 
@@ -109,7 +114,9 @@ piece was chosen.
 | `appleFoundation.bridge.executablePath` | `fm` | Path to the bridge CLI (`afm` on macOS 26) |
 | `appleFoundation.bridge.port` | `9999` | Loopback port for the bridge server |
 | `appleFoundation.bridge.autoStart` | `true` | Start the bridge on demand |
-| `appleFoundation.model.maxOutputTokens` | `1024` | Response token cap (context is 4096 shared) |
+| `appleFoundation.bridge.idleTimeoutMinutes` | `5` | Stop an extension-spawned bridge after idle minutes (`0` = never) |
+| `appleFoundation.model.maxOutputTokens` | `1024` | Response token cap |
+| `appleFoundation.model.maxContextTokens` | `4096` | Shared context window used for input budgeting |
 
 ## Development setup
 

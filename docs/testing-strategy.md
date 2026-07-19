@@ -11,8 +11,9 @@ that split.
 
 | Layer | Tool | Runs | Covers |
 | --- | --- | --- | --- |
-| Unit | Vitest (`src/**/*.test.ts`) | every commit, CI | SSE parsing, availability gating, config normalization, message conversion — all pure logic |
-| Integration | `@vscode/test-electron` (planned, roadmap Phase 0) | CI | activation, provider registration, command wiring inside a real Extension Host |
+| Unit | Vitest (`src/**/*.test.ts`) | every commit, CI | SSE parsing, availability, config, tokens/budgeting, errors, history, onboarding, message conversion, client (mocked `fetch`) |
+| Live bridge | Vitest (`src/bridge/client.integration.test.ts`) | every commit on Apple Silicon (skips elsewhere) | real `fm serve` health, model list, streaming completion |
+| Integration | `@vscode/test-electron` (planned) | CI | activation, provider registration, command wiring inside a real Extension Host |
 | End-to-end (manual) | Extension Development Host on real hardware | before release; for bridge/provider PRs | actual inference through `fm serve` (or `afm`) on Apple Silicon |
 
 ## Rules

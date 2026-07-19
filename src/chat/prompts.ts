@@ -25,6 +25,11 @@ export interface TurnContext {
 /**
  * The on-device model has a small (~4K) context window, so every instruction
  * is kept terse and a single task is asked per turn.
+ *
+ * Keep this string byte-stable across turns of a thread: Apple's framework
+ * KV-caches the stable prompt prefix (instructions + tools), and any change to
+ * it invalidates the cache and adds latency to every subsequent turn
+ * (docs/apple-fm-reference.md, "Token & context rules").
  */
 const BASE_RULES =
   'You are Apple On-Device, a private assistant running locally on the developer\u2019s Mac. ' +

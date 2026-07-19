@@ -1,8 +1,15 @@
 import * as vscode from 'vscode';
 import type { BridgeServerManager } from '../bridge/server';
 import { checkHost, currentHostInfo } from '../core/availability';
-import { readBridgeConfig } from '../core/config';
+import { maxInputTokens, readBridgeConfig } from '../core/config';
+import { asBridgeError, formatErrorForUser } from '../core/errors';
 import type { Logger } from '../core/logger';
+import {
+  detectOnboardingIssues,
+  formatOnboardingMarkdown,
+  resolveExecutableOnPath,
+} from '../core/onboarding';
+import { countTokensWithCli, estimateTokens } from '../core/tokens';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -12,21 +19,62 @@ export function registerCommands(
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('appleFoundation.showStatus', async () => {
-      const availability = checkHost(currentHostInfo());
+      const host = currentHostInfo();
+      const availability = checkHost(host);
       const config = readBridgeConfig();
       if (!availability.available) {
         void vscode.window.showWarningMessage(availability.reason);
         return;
       }
+
+      // Probe the bridge first: a user-started external server is fully
+      // supported even when the CLI is not resolvable on the extension-host
+      // PATH, so setup guidance only appears when the bridge is unreachable.
       try {
         const client = await server.ensureRunning();
-        const models = await client.listModels();
+        const sample = 'status probe';
+        const [models, exact] = await Promise.all([
+          client.listModels(),
+          countTokensWithCli(sample, {
+            executablePath: config.executablePath,
+            timeoutMs: 3000,
+          }),
+        ]);
+        const tokenNote =
+          exact !== undefined
+            ? `token-count(CLI)="${sample}"→${exact} (estimate=${estimateTokens(sample)})`
+            : `token estimate only (CLI unavailable); "hi"≈${estimateTokens('hi')}`;
+        const resolved = resolveExecutableOnPath(config.executablePath);
+
         void vscode.window.showInformationMessage(
-          `Bridge healthy on 127.0.0.1:${config.port}. Models: ${models.join(', ') || 'none'}`,
+          `Bridge healthy on 127.0.0.1:${config.port}. ` +
+            `Models: ${models.join(', ') || 'none'}. ` +
+            `Budget: ${maxInputTokens(config)} in / ${config.maxOutputTokens} out ` +
+            `(context ${config.maxContextTokens}). ` +
+            `CLI: ${resolved ?? config.executablePath}. ${tokenNote}`,
         );
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        void vscode.window.showErrorMessage(`Bridge unavailable: ${message}`);
+        const issues = detectOnboardingIssues({
+          host,
+          executablePath: config.executablePath,
+        });
+        const primary = issues[0];
+        if (primary !== undefined) {
+          const actionLabel = primary.actionLabel ?? 'Open settings';
+          const choice = await vscode.window.showWarningMessage(
+            `${primary.title}: ${primary.detail}`,
+            actionLabel,
+          );
+          if (choice === actionLabel) {
+            await vscode.commands.executeCommand(
+              primary.actionCommand ?? 'workbench.action.openSettings',
+              'appleFoundation',
+            );
+          }
+          return;
+        }
+        const bridgeError = asBridgeError(error);
+        void vscode.window.showErrorMessage(formatErrorForUser(bridgeError));
       }
     }),
 
@@ -35,8 +83,8 @@ export function registerCommands(
         await server.restart();
         void vscode.window.showInformationMessage('Bridge server restarted.');
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        void vscode.window.showErrorMessage(`Restart failed: ${message}`);
+        const bridgeError = asBridgeError(error);
+        void vscode.window.showErrorMessage(formatErrorForUser(bridgeError));
       }
     }),
 
@@ -64,5 +112,70 @@ export function registerCommands(
         await vscode.commands.executeCommand(choice.command);
       }
     }),
+
+    vscode.commands.registerCommand('appleFoundation.runOnboarding', async () => {
+      await runOnboarding(context, logger);
+    }),
   );
+}
+
+/**
+ * First-run / guided setup. Surfaces host and bridge issues with actionable
+ * buttons. Idempotent: safe to call from activate and from the command palette.
+ */
+export async function runOnboarding(
+  context: vscode.ExtensionContext,
+  logger: Logger,
+  options?: { force?: boolean },
+): Promise<void> {
+  const config = readBridgeConfig();
+  const issues = detectOnboardingIssues({
+    host: currentHostInfo(),
+    executablePath: config.executablePath,
+  });
+
+  if (issues.length === 0) {
+    if (options?.force === true) {
+      void vscode.window.showInformationMessage(
+        'Apple Foundation Models looks ready. Open chat and pick "Apple On-Device".',
+      );
+    }
+    return;
+  }
+
+  const dismissed = context.globalState.get<boolean>('appleFoundation.onboarding.dismissed', false);
+  if (dismissed && options?.force !== true) {
+    logger.debug(`Onboarding issues present but dismissed: ${issues.map((i) => i.code).join(',')}`);
+    return;
+  }
+
+  logger.info(`Onboarding: ${issues.map((i) => i.code).join(', ')}`);
+  const primary = issues[0];
+  if (primary === undefined) {
+    return;
+  }
+
+  const buttons = [
+    primary.actionLabel ?? 'Open settings',
+    'Show logs',
+    "Don't show again",
+  ] as const;
+  const choice = await vscode.window.showWarningMessage(
+    `${primary.title}: ${primary.detail}`,
+    ...buttons,
+  );
+
+  if (choice === 'Show logs') {
+    await vscode.commands.executeCommand('appleFoundation.showLogs');
+  } else if (choice === "Don't show again") {
+    await context.globalState.update('appleFoundation.onboarding.dismissed', true);
+  } else if (choice === (primary.actionLabel ?? 'Open settings')) {
+    await vscode.commands.executeCommand(
+      primary.actionCommand ?? 'workbench.action.openSettings',
+      'appleFoundation',
+    );
+  }
+
+  // Also dump a structured note into the log channel for supportability.
+  logger.info(formatOnboardingMarkdown(issues));
 }
