@@ -2,7 +2,7 @@
   "name": "apple-foundation-vscode",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "sagarawale",
   "license": "MIT",
   "private": true,
