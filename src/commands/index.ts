@@ -136,6 +136,15 @@ export async function runOnboarding(
     executablePath: config.executablePath,
   });
 
+  // biome-ignore lint/complexity/useLiteralKeys: TypeScript requires bracket access for index signatures
+  if (process.env['VSCODE_TEST'] === 'true') {
+    logger.info(
+      `[Test] Skipping onboarding interactive dialog. Issues: ${issues.map((i) => i.code).join(', ')}`,
+    );
+    logger.info(formatOnboardingMarkdown(issues));
+    return;
+  }
+
   if (issues.length === 0) {
     if (options?.force === true) {
       void vscode.window.showInformationMessage(

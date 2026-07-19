@@ -214,7 +214,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:vscode": "node esbuild.mjs && node esbuild.mjs --tests && vscode-test",
+    "test:vscode": "node esbuild.mjs && node esbuild.mjs --tests && VSCODE_TEST=true vscode-test",
     "verify": "pnpm run check && pnpm run typecheck && pnpm run test",
     "package": "vsce package --no-dependencies --target darwin-arm64",
     "publish:marketplace": "vsce publish --no-dependencies --target darwin-arm64",

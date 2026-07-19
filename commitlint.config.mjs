@@ -3,4 +3,5 @@ export default {
   rules: {
     'body-max-line-length': [1, 'always', 120],
   },
+  ignores: [(message) => message.includes('Version Packages')],
 };
