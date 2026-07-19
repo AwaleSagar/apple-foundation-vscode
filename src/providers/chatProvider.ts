@@ -71,7 +71,7 @@ export class AppleFoundationChatProvider implements vscode.LanguageModelChatProv
       throw new Error(formatErrorForUser(bridgeError));
     }
 
-    const wireModel = await resolveWireModel(client);
+    const wireModel = await resolveWireModel(client, { offlineOnly: config.offlineOnlyMode });
     const budgeted = fitMessagesToBudget(toBridgeMessages(messages), maxInputTokens(config));
     if (budgeted.trimmed) {
       this.logger.info(

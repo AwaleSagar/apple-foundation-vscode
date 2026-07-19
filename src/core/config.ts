@@ -22,6 +22,12 @@ export interface BridgeConfig {
    * `0` disables idle shutdown. External (user-started) servers are never killed.
    */
   readonly idleTimeoutMinutes: number;
+  /**
+   * When true, refuse to use any model other than the on-device `system`
+   * model — even if the bridge offers alternatives (e.g. Private Cloud
+   * Compute). Auditable guarantee for air-gapped environments.
+   */
+  readonly offlineOnlyMode: boolean;
 }
 
 export const DEFAULT_BRIDGE_CONFIG: BridgeConfig = {
@@ -31,6 +37,7 @@ export const DEFAULT_BRIDGE_CONFIG: BridgeConfig = {
   maxOutputTokens: 1024,
   maxContextTokens: DEFAULT_CONTEXT_WINDOW_TOKENS,
   idleTimeoutMinutes: 5,
+  offlineOnlyMode: false,
 };
 
 const MIN_PORT = 1024;
@@ -80,6 +87,11 @@ export function normalizeBridgeConfig(raw: RawBridgeConfig): BridgeConfig {
       ? Math.min(MAX_IDLE_MINUTES, Math.max(0, Math.floor(raw.idleTimeoutMinutes)))
       : DEFAULT_BRIDGE_CONFIG.idleTimeoutMinutes;
 
+  const offlineOnlyMode =
+    typeof raw.offlineOnlyMode === 'boolean'
+      ? raw.offlineOnlyMode
+      : DEFAULT_BRIDGE_CONFIG.offlineOnlyMode;
+
   return {
     executablePath,
     port,
@@ -87,6 +99,7 @@ export function normalizeBridgeConfig(raw: RawBridgeConfig): BridgeConfig {
     maxOutputTokens,
     maxContextTokens,
     idleTimeoutMinutes,
+    offlineOnlyMode,
   };
 }
 
@@ -113,5 +126,6 @@ export function readBridgeConfig(): BridgeConfig {
     maxOutputTokens: cfg.get<number>('model.maxOutputTokens'),
     maxContextTokens: cfg.get<number>('model.maxContextTokens'),
     idleTimeoutMinutes: cfg.get<number>('bridge.idleTimeoutMinutes'),
+    offlineOnlyMode: cfg.get<boolean>('offlineOnlyMode'),
   });
 }

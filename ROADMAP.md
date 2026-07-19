@@ -37,7 +37,11 @@ future `offlineOnlyMode` setting.
 - [x] Onboarding: first-run PATH/host check + `Apple Foundation Models: Run Setup Check`
 - [x] Marketplace release assets: icon + listing copy (demo GIF still tracked for publish day)
 - [x] Live bridge integration tests (`src/bridge/client.integration.test.ts` against `fm serve`
-      when available); Extension Host suite (`@vscode/test-electron`) still planned
+      when available)
+- [x] Extension Host integration suite (`pnpm run test:vscode`, @vscode/test-cli) in CI
+- [x] Status bar bridge-health indicator with management quick-pick
+- [x] Get Started walkthrough + localization scaffolding (`package.nls.json`)
+- [x] `offlineOnlyMode`: machine-enforced on-device-only model resolution
 
 **MVP ship criteria** (per the research doc §15): install one VSIX, see "Apple On-Device" in
 the picker, chat offline with streaming, and generate a conventional commit from staged
@@ -57,8 +61,8 @@ changes — no account, key, or setup beyond Apple Intelligence being on.
 
 ## Phase 3 — Harden & launch (M7–M8)
 
-- [ ] Opt-in PCC model entry (32K context, `reasoningLevel`) + `offlineOnlyMode` that refuses
-      to construct it at all
+- [ ] Opt-in PCC model entry (32K context, `reasoningLevel`) — `offlineOnlyMode` already ships
+      and will hard-disable it
 - [ ] Optional embedded Swift sidecar (stdio JSON-RPC, signed + notarized) for capabilities the
       Chat Completions protocol can't express — persistent sessions, vision, dynamic profiles
       (revisits [ADR-0002](docs/adr/0002-bridge-cli.md))

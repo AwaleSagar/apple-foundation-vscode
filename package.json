@@ -1,7 +1,7 @@
 {
   "name": "apple-foundation-vscode",
-  "displayName": "Apple Foundation Models",
-  "description": "Private, offline AI-assisted development powered by Apple's on-device Foundation Models. macOS only.",
+  "displayName": "%displayName%",
+  "description": "%description%",
   "version": "0.1.0",
   "publisher": "sagarawale",
   "license": "MIT",
@@ -60,7 +60,7 @@
     "languageModelChatProviders": [
       {
         "vendor": "apple-foundation",
-        "displayName": "Apple Foundation Models",
+        "displayName": "%displayName%",
         "managementCommand": "appleFoundation.manage"
       }
     ],
@@ -68,21 +68,21 @@
       {
         "id": "apple-foundation.chat",
         "name": "apple",
-        "fullName": "Apple On-Device Model",
-        "description": "Private, offline, on-device help \u2014 explain, document, and write commits",
+        "fullName": "%participant.fullName%",
+        "description": "%participant.description%",
         "isSticky": true,
         "commands": [
           {
             "name": "explain",
-            "description": "Explain the selected code or a concept"
+            "description": "%participant.explain.description%"
           },
           {
             "name": "doc",
-            "description": "Generate a documentation comment for the selection"
+            "description": "%participant.doc.description%"
           },
           {
             "name": "commit",
-            "description": "Write a Conventional Commit message from staged changes"
+            "description": "%participant.commit.description%"
           }
         ]
       }
@@ -90,38 +90,77 @@
     "commands": [
       {
         "command": "appleFoundation.manage",
-        "title": "Manage Provider",
-        "category": "Apple Foundation Models"
+        "title": "%command.manage.title%",
+        "category": "%category%"
       },
       {
         "command": "appleFoundation.showStatus",
-        "title": "Show Status",
-        "category": "Apple Foundation Models"
+        "title": "%command.showStatus.title%",
+        "category": "%category%"
       },
       {
         "command": "appleFoundation.restartServer",
-        "title": "Restart Bridge Server",
-        "category": "Apple Foundation Models"
+        "title": "%command.restartServer.title%",
+        "category": "%category%"
       },
       {
         "command": "appleFoundation.showLogs",
-        "title": "Show Logs",
-        "category": "Apple Foundation Models"
+        "title": "%command.showLogs.title%",
+        "category": "%category%"
       },
       {
         "command": "appleFoundation.runOnboarding",
-        "title": "Run Setup Check",
-        "category": "Apple Foundation Models"
+        "title": "%command.runOnboarding.title%",
+        "category": "%category%"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "appleFoundation.gettingStarted",
+        "title": "%walkthrough.title%",
+        "description": "%walkthrough.description%",
+        "steps": [
+          {
+            "id": "checkSetup",
+            "title": "%walkthrough.checkSetup.title%",
+            "description": "%walkthrough.checkSetup.description%",
+            "media": {
+              "markdown": "media/walkthrough/check-setup.md"
+            },
+            "completionEvents": [
+              "onCommand:appleFoundation.runOnboarding"
+            ]
+          },
+          {
+            "id": "pickModel",
+            "title": "%walkthrough.pickModel.title%",
+            "description": "%walkthrough.pickModel.description%",
+            "media": {
+              "markdown": "media/walkthrough/pick-model.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.chat.open"
+            ]
+          },
+          {
+            "id": "tryApple",
+            "title": "%walkthrough.tryApple.title%",
+            "description": "%walkthrough.tryApple.description%",
+            "media": {
+              "markdown": "media/walkthrough/try-apple.md"
+            }
+          }
+        ]
       }
     ],
     "configuration": {
-      "title": "Apple Foundation Models",
+      "title": "%displayName%",
       "properties": {
         "appleFoundation.bridge.executablePath": {
           "type": "string",
           "default": "fm",
           "scope": "machine",
-          "markdownDescription": "Path to the bridge CLI. Defaults to the `fm` CLI preinstalled on macOS 27+. On macOS 26, set this to `afm` (install via `brew install scouzi1966/afm/afm`). Machine-scoped: cannot be set by a workspace."
+          "markdownDescription": "%config.executablePath.description%"
         },
         "appleFoundation.bridge.port": {
           "type": "number",
@@ -129,33 +168,38 @@
           "minimum": 1024,
           "maximum": 65535,
           "scope": "machine",
-          "description": "Local port for the bridge server. The server binds to 127.0.0.1 only. Machine-scoped: cannot be set by a workspace."
+          "description": "%config.port.description%"
         },
         "appleFoundation.bridge.autoStart": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically start the bridge server when a chat request needs it."
+          "description": "%config.autoStart.description%"
         },
         "appleFoundation.bridge.idleTimeoutMinutes": {
           "type": "number",
           "default": 5,
           "minimum": 0,
           "maximum": 120,
-          "description": "Stop a bridge process this extension started after this many minutes idle. 0 disables idle shutdown. Never kills a user-started bridge."
+          "description": "%config.idleTimeoutMinutes.description%"
         },
         "appleFoundation.model.maxOutputTokens": {
           "type": "number",
           "default": 1024,
           "minimum": 16,
           "maximum": 8192,
-          "description": "Maximum tokens the model may produce per response."
+          "description": "%config.maxOutputTokens.description%"
         },
         "appleFoundation.model.maxContextTokens": {
           "type": "number",
           "default": 4096,
           "minimum": 512,
           "maximum": 32768,
-          "markdownDescription": "Shared context window (input + output) used for budgeting. Raise if your on-device model reports a larger window; lower on memory-constrained machines."
+          "markdownDescription": "%config.maxContextTokens.description%"
+        },
+        "appleFoundation.offlineOnlyMode": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.offlineOnlyMode.description%"
         }
       }
     }
@@ -170,6 +214,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:vscode": "node esbuild.mjs && node esbuild.mjs --tests && vscode-test",
     "verify": "pnpm run check && pnpm run typecheck && pnpm run test",
     "package": "vsce package --no-dependencies --target darwin-arm64",
     "publish:marketplace": "vsce publish --no-dependencies --target darwin-arm64",
@@ -188,9 +233,12 @@
     "@changesets/cli": "^2.29.0",
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^24.0.0",
     "@types/vscode": "~1.104.0",
     "@vitest/coverage-v8": "^3.2.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.0",
     "husky": "^9.1.0",

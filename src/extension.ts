@@ -5,6 +5,7 @@ import { registerCommands, runOnboarding } from './commands';
 import { readBridgeConfig } from './core/config';
 import { createOutputChannel } from './core/logger';
 import { AppleFoundationChatProvider } from './providers/chatProvider';
+import { registerStatusBar } from './ui/statusBar';
 
 export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = createOutputChannel();
@@ -20,6 +21,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   registerChatParticipant(context, server, outputChannel, readBridgeConfig);
   registerCommands(context, server, outputChannel, outputChannel);
+  registerStatusBar(context, server);
 
   // Non-blocking setup check — never delay activation for PATH probes / UI.
   void runOnboarding(context, outputChannel).catch((error: unknown) => {

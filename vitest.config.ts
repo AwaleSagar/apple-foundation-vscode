@@ -11,6 +11,8 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts'],
+    // src/test/vscode runs inside a real Extension Host via `test:vscode`.
+    exclude: ['src/test/vscode/**'],
     environment: 'node',
     coverage: {
       provider: 'v8',

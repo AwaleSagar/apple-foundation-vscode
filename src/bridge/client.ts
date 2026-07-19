@@ -129,19 +129,48 @@ const wireModelCache = new WeakMap<BridgeClient, string>();
  * Resolve the wire model id to send in requests. The name differs per bridge
  * ("system" for `fm serve`), so ask the server rather than hardcoding, and
  * fall back to the fm default if the listing is unavailable.
+ *
+ * With `offlineOnly`, only the on-device `system` model is ever returned —
+ * the auditable guarantee behind the `appleFoundation.offlineOnlyMode`
+ * setting. If the bridge offers no `system` model, the request fails rather
+ * than silently selecting an alternative that might leave the device.
  */
-export async function resolveWireModel(client: BridgeClient): Promise<string> {
+export async function resolveWireModel(
+  client: BridgeClient,
+  options?: { offlineOnly?: boolean },
+): Promise<string> {
+  const offlineOnly = options?.offlineOnly === true;
   const cached = wireModelCache.get(client);
-  if (cached !== undefined) {
+  if (cached !== undefined && (!offlineOnly || cached === 'system')) {
     return cached;
   }
   try {
     const models = await client.listModels();
+    if (offlineOnly) {
+      if (!models.includes('system')) {
+        throw new BridgeError(
+          'BRIDGE_UNAVAILABLE',
+          'Offline-only mode is on, but the bridge does not offer the on-device "system" model.',
+          {
+            actionable:
+              'Point appleFoundation.bridge.executablePath at the `fm` CLI, or disable ' +
+              'appleFoundation.offlineOnlyMode if you intend to use a different local bridge.',
+          },
+        );
+      }
+      wireModelCache.set(client, 'system');
+      return 'system';
+    }
     // Prefer the on-device system model; never auto-select PCC.
     const resolved = models.includes('system') ? 'system' : (models[0] ?? 'system');
     wireModelCache.set(client, resolved);
     return resolved;
-  } catch {
+  } catch (error) {
+    if (error instanceof BridgeError) {
+      throw error;
+    }
+    // Listing failed (older bridge without /v1/models detail): "system" is the
+    // on-device model's id on every supported bridge, so this stays offline-safe.
     return 'system';
   }
 }

@@ -68,6 +68,10 @@ piece was chosen.
   copy instead of opaque HTTP failures
 - 🧭 **Guided setup** — first-run check when the host or bridge CLI is missing
 - 🍎 **Zero-install on macOS 27+** — uses the system `fm` CLI; no Homebrew required
+- 📍 **Status bar health** — bridge state at a glance; click for management actions
+- ✈️ **Offline-only mode** — `appleFoundation.offlineOnlyMode` hard-refuses any model except
+  the on-device one; auditable for air-gapped environments
+- 🚀 **Get Started walkthrough** — guided first-run setup inside VS Code's Welcome view
 - 📡 **Streaming responses** — token-by-token output via Server-Sent Events
 - 🩺 **Status & diagnostics** — `Apple Foundation Models: Show Status` command and a dedicated
   log output channel
@@ -117,6 +121,7 @@ piece was chosen.
 | `appleFoundation.bridge.idleTimeoutMinutes` | `5` | Stop an extension-spawned bridge after idle minutes (`0` = never) |
 | `appleFoundation.model.maxOutputTokens` | `1024` | Response token cap |
 | `appleFoundation.model.maxContextTokens` | `4096` | Shared context window used for input budgeting |
+| `appleFoundation.offlineOnlyMode` | `false` | Refuse every model except the on-device `system` model |
 
 ## Development setup
 
@@ -144,10 +149,15 @@ Full guide: [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Testing
 
-Unit tests (Vitest) cover all pure logic — SSE parsing, host availability, config normalization,
-message conversion — with the `vscode` module aliased to a stub. Editor-integration behavior is
-verified in the Extension Development Host. Strategy and rationale:
-[docs/testing-strategy.md](docs/testing-strategy.md).
+Three layers, all wired into CI:
+
+- **Unit** (Vitest, `pnpm run test`) — all pure logic, with `vscode` aliased to a stub
+- **Extension Host integration** (`pnpm run test:vscode`) — activation, command registration,
+  configuration resolution, and contribution wiring inside a real downloaded VS Code
+- **Live bridge** (part of the Vitest suite) — streams real completions through `fm serve`
+  when the CLI is present; skips cleanly elsewhere
+
+Strategy and rationale: [docs/testing-strategy.md](docs/testing-strategy.md).
 
 ## Debugging
 

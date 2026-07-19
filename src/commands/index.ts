@@ -114,7 +114,9 @@ export function registerCommands(
     }),
 
     vscode.commands.registerCommand('appleFoundation.runOnboarding', async () => {
-      await runOnboarding(context, logger);
+      // Explicit invocation (palette / walkthrough) always responds, even when
+      // the check passes or was previously dismissed.
+      await runOnboarding(context, logger, { force: true });
     }),
   );
 }

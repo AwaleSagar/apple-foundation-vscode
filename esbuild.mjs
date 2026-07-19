@@ -2,6 +2,8 @@ import esbuild from 'esbuild';
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
+// --tests bundles the Extension Host integration suite instead of the extension.
+const tests = process.argv.includes('--tests');
 
 /** @type {import('esbuild').Plugin} */
 const esbuildProblemMatcherPlugin = {
@@ -23,7 +25,7 @@ const esbuildProblemMatcherPlugin = {
 };
 
 const ctx = await esbuild.context({
-  entryPoints: ['src/extension.ts'],
+  entryPoints: tests ? ['src/test/vscode/extension.test.ts'] : ['src/extension.ts'],
   bundle: true,
   format: 'cjs',
   minify: production,
@@ -31,8 +33,8 @@ const ctx = await esbuild.context({
   sourcesContent: false,
   platform: 'node',
   target: 'node22',
-  outfile: 'dist/extension.js',
-  external: ['vscode'],
+  outfile: tests ? 'dist-test/extension.test.js' : 'dist/extension.js',
+  external: ['vscode', 'mocha'],
   logLevel: 'silent',
   plugins: [esbuildProblemMatcherPlugin],
 });

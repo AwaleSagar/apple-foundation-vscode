@@ -14,6 +14,7 @@ describe('normalizeBridgeConfig', () => {
       maxOutputTokens: 512,
       maxContextTokens: 8192,
       idleTimeoutMinutes: 10,
+      offlineOnlyMode: true,
     });
     expect(config).toEqual({
       executablePath: '/opt/homebrew/bin/afm',
@@ -22,6 +23,7 @@ describe('normalizeBridgeConfig', () => {
       maxOutputTokens: 512,
       maxContextTokens: 8192,
       idleTimeoutMinutes: 10,
+      offlineOnlyMode: true,
     });
   });
 

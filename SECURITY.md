@@ -25,6 +25,11 @@ This extension's core promise is privacy, so its attack surface is deliberately 
   When this extension starts `fm serve`, it passes `--host 127.0.0.1` so the process binds
   loopback-only. There is no telemetry, no update pinging, no cloud inference. Any PR adding
   an outbound network call to the inference path is rejected on principle.
+- **Offline-only mode.** `appleFoundation.offlineOnlyMode` makes the on-device guarantee
+  machine-enforced: model resolution refuses anything except the on-device `system` model,
+  even if a bridge advertises alternatives (such as Apple's Private Cloud Compute). Suitable
+  for air-gapped or policy-restricted environments; the enforcement lives in one auditable
+  function (`resolveWireModel`).
 - **Process spawning.** The only spawned executable is the user-configured
   `appleFoundation.bridge.executablePath` (default: the system `fm` CLI), executed with an
   argument array and no shell, so settings cannot inject shell syntax. The setting (and the

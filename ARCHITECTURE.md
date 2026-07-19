@@ -50,6 +50,7 @@ keep the chat interface they already know ([ADR-0003](docs/adr/0003-language-mod
 | `src/providers/` | Adapt VS Code's LM provider API to the bridge | `bridge`, `core` |
 | `src/chat/` | `@apple` participant, prompts, git staged-diff, history | `bridge`, `core` |
 | `src/commands/` | User-facing commands (status, restart, logs, manage, setup) | `bridge`, `core` |
+| `src/ui/` | Passive UI surfaces (status bar) | `bridge`, `core` |
 | `src/bridge/` | Talk to / manage the bridge process. No VS Code UI imports | `core` |
 | `src/core/` | Config, logging, availability, tokens, errors, onboarding, history | nothing internal |
 | `src/test/` | Unit tests + `vscode` stub | anything |

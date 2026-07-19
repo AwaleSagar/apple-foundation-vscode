@@ -3,7 +3,11 @@ node_modules/
 
 # Build output
 dist/
+dist-test/
 *.vsix
+
+# Extension Host test downloads
+.vscode-test/
 
 # Test output
 coverage/

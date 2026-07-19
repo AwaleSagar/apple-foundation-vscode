@@ -6,6 +6,10 @@ src/**
 docs/**
 node_modules/**
 coverage/**
+.firecrawl/**
+dist-test/**
+.vscode-test/**
+.vscode-test.mjs
 esbuild.mjs
 vitest.config.ts
 tsconfig.json

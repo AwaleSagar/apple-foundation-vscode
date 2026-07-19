@@ -130,4 +130,45 @@ describe('resolveWireModel', () => {
     } as unknown as BridgeClient;
     await expect(resolveWireModel(client)).resolves.toBe('system');
   });
+
+  it('caches successful resolutions per client instance', async () => {
+    let calls = 0;
+    const client = {
+      listModels: async () => {
+        calls += 1;
+        return ['system'];
+      },
+    } as unknown as BridgeClient;
+    await resolveWireModel(client);
+    await resolveWireModel(client);
+    expect(calls).toBe(1);
+  });
+
+  it('offlineOnly returns system when the bridge offers it', async () => {
+    const client = {
+      listModels: async () => ['pcc', 'system'],
+    } as unknown as BridgeClient;
+    await expect(resolveWireModel(client, { offlineOnly: true })).resolves.toBe('system');
+  });
+
+  it('offlineOnly refuses a bridge without the on-device model', async () => {
+    const client = {
+      listModels: async () => ['some-cloud-model'],
+    } as unknown as BridgeClient;
+    await expect(resolveWireModel(client, { offlineOnly: true })).rejects.toMatchObject({
+      code: 'BRIDGE_UNAVAILABLE',
+    });
+  });
+
+  it('offlineOnly ignores a cached non-system resolution', async () => {
+    const client = {
+      listModels: async () => ['other-model'],
+    } as unknown as BridgeClient;
+    // First resolution (permissive) caches "other-model"…
+    await expect(resolveWireModel(client)).resolves.toBe('other-model');
+    // …but offline-only must not trust that cache.
+    await expect(resolveWireModel(client, { offlineOnly: true })).rejects.toMatchObject({
+      code: 'BRIDGE_UNAVAILABLE',
+    });
+  });
 });

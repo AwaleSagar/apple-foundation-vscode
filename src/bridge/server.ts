@@ -91,6 +91,27 @@ export class BridgeServerManager {
   }
 
   /**
+   * Cached, non-spawning health probe for UI surfaces (status bar). Never
+   * starts a process and never throws.
+   */
+  async checkHealth(): Promise<boolean> {
+    const config = this.getConfig();
+    const url = `http://127.0.0.1:${config.port}`;
+    if (this.client === undefined || this.client.url !== url) {
+      this.client = new BridgeClient(url);
+      this.lastHealthyAt = 0;
+    }
+    if (Date.now() - this.lastHealthyAt < HEALTH_CACHE_MS) {
+      return true;
+    }
+    const healthy = await this.client.isHealthy().catch(() => false);
+    if (healthy) {
+      this.lastHealthyAt = Date.now();
+    }
+    return healthy;
+  }
+
+  /**
    * Mark a request as in flight so the idle timer cannot stop the bridge while
    * a response is still streaming. Call the returned function when the request
    * settles (success, error, or cancellation); it re-arms the idle clock.

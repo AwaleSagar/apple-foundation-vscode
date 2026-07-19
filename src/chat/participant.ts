@@ -116,7 +116,14 @@ export function registerChatParticipant(
       return { errorDetails: { message: bridgeError.message }, metadata: meta };
     }
 
-    const wireModel = await resolveWireModel(client);
+    let wireModel: string;
+    try {
+      wireModel = await resolveWireModel(client, { offlineOnly: config.offlineOnlyMode });
+    } catch (error) {
+      const bridgeError = asBridgeError(error);
+      stream.markdown(formatErrorForUser(bridgeError));
+      return { errorDetails: { message: bridgeError.message }, metadata: meta };
+    }
     // Hold the idle timer open for the whole stream, not just request start.
     const release = server.beginRequest();
     const abort = new AbortController();
