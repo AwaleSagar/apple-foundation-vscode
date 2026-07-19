@@ -80,9 +80,18 @@ export async function applyStagedEdit(): Promise<ApplyResult> {
         edit.replace(uri, fullRange, preview);
       }
     } else {
-      // File not open: whole-content write via replace of full range after open-from-disk
+      // File not open: re-read from disk and verify it hasn't drifted since
+      // staging. Resolved hunks carry offsets computed against the staged
+      // snapshot; applying them to a changed file would silently corrupt it.
       const bytes = await vscode.workspace.fs.readFile(uri);
       const text = new TextDecoder('utf-8').decode(bytes);
+      if (text !== original) {
+        return {
+          applied: false,
+          outcomes: staged.outcomes,
+          error: `${outcome.path} changed on disk since staging; re-run /edit to refresh`,
+        };
+      }
       // Use a single full-document replace via WorkspaceEdit by creating a temporary doc range:
       // WorkspaceEdit.replace requires positions; open as TextDocument for positioning.
       const opened = await vscode.workspace.openTextDocument(uri);

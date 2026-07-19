@@ -78,4 +78,37 @@ describe('resolveEditPlan', () => {
     ];
     expect(applyResolvedHunksToText(original, hunks)).toBe('A1\nBBBB\nC3\n');
   });
+
+  it('rebases replace indent on the file matched bytes, not hunk.search (ws strategy)', () => {
+    // File uses tab indent; model emitted SEARCH/REPLACE with 2-space indent.
+    // Exact match fails (no `  return 1;` substring), so the ws-tolerant
+    // matcher runs. The applied replace must pick up the file's tab indent,
+    // not the model's 2-space indent.
+    const files = new Map<string, string>([['src/b.ts', 'function f() {\n\treturn 1;\n}\n']]);
+    const wsSource = {
+      read: (path: string) => files.get(path),
+      exists: (path: string) => files.has(path),
+    };
+    const plan: EditPlan = {
+      summary: 'rename',
+      changes: [
+        {
+          path: 'src/b.ts',
+          action: 'update',
+          hunks: [
+            {
+              search: '  return 1;',
+              replace: '  return 2;',
+            },
+          ],
+        },
+      ],
+    };
+    const { outcomes } = resolveEditPlan(plan, wsSource);
+    const resolved = outcomes[0]?.resolved;
+    expect(resolved).toBeDefined();
+    expect(resolved?.[0]?.strategy).toBe('ws');
+    // The applied replace should carry the file's tab indent, not the model's 2-space indent.
+    expect(resolved?.[0]?.replace).toBe('\treturn 2;');
+  });
 });

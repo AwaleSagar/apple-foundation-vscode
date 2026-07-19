@@ -116,6 +116,33 @@ const a = 2;
       expect(result.plan.changes[0]?.hunks?.[0]?.replace).toBe('const a = 2;');
     }
   });
+
+  it('does not treat a prose line above unfenced block as a path', () => {
+    const text = `I'll update the login handler below:
+<<<<<<< SEARCH
+old
+=======
+new
+>>>>>>> REPLACE
+`;
+    const result = parseEditPlan(text);
+    expect(result.ok).toBe(false);
+  });
+
+  it('falls back to defaultPath when unfenced block has a non-path preceding line', () => {
+    const text = `Here is the change:
+<<<<<<< SEARCH
+old
+=======
+new
+>>>>>>> REPLACE
+`;
+    const result = parseEditPlan(text, { defaultPath: 'src/main.ts' });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.plan.changes[0]?.path).toBe('src/main.ts');
+    }
+  });
 });
 
 describe('extractJsonObject', () => {

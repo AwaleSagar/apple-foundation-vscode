@@ -188,11 +188,19 @@ export function parseSearchReplaceBlocks(
     const unfencedRe =
       /(?:^|\n)([^\n]+)\n<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/g;
     for (const match of text.matchAll(unfencedRe)) {
-      found += 1;
-      const path = match[1]?.trim() ?? '';
+      const preceding = match[1]?.trim() ?? '';
       const search = match[2] ?? '';
       const replace = match[3] ?? '';
-      if (path === '' || path.startsWith('```')) {
+      // The preceding line can be anything (e.g. "I'll update the handler
+      // below:"); only treat it as a path when it actually looks like one,
+      // otherwise fall back to defaultPath. Skipping a stray prose line is
+      // safer than sandbox-checking a sentence as a file path.
+      let path = '';
+      if (preceding !== '' && !preceding.startsWith('```') && looksLikePath(preceding)) {
+        path = preceding;
+      } else if (defaultPath !== undefined && defaultPath !== '') {
+        path = defaultPath;
+      } else {
         continue;
       }
       if (search === '') {
@@ -203,7 +211,14 @@ export function parseSearchReplaceBlocks(
         acc = { path, hunks: [] };
         byPath.set(path, acc);
       }
+      if (acc.hunks.length >= limits.maxHunksPerFile) {
+        return {
+          ok: false,
+          error: `Too many hunks for ${path} (max ${limits.maxHunksPerFile})`,
+        };
+      }
       acc.hunks.push({ search, replace });
+      found += 1;
     }
   }
 

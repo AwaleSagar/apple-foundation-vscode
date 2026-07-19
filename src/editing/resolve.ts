@@ -147,7 +147,13 @@ function resolveFileChange(
     }
     occupied.push({ start: match.start, end: match.end });
 
-    const replace = alignReplaceIndent(hunk.search, hunk.replace);
+    // Rebase the replace on the bytes actually occupying the matched range in
+    // the file. For non-exact strategies (ws/eol/fuzzy) the file's leading
+    // whitespace at [match.start, match.end) can differ from hunk.search, and
+    // rebasing on hunk.search would emit the model's written indent instead of
+    // the file's.
+    const matchedText = content.slice(match.start, match.end);
+    const replace = alignReplaceIndent(matchedText, hunk.replace);
     resolved.push({
       search: hunk.search,
       replace,
