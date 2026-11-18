@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Local Chat">
+  <title>Local Chat</title>
+<rect width="256" height="256" rx="44" fill="#173C30"/>
+<g transform="translate(30 25) scale(3.25)"><path fill="#C5E779" fill-rule="evenodd" d="M7 7H46L57 18V41Q57 45 53 45H25L10 57V45H7Q4 45 4 42V10Q4 7 7 7ZM22 19H28L20 34H14ZM34 19H40L32 34H26Z"/></g>
+</svg>

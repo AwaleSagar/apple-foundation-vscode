@@ -1,8 +1,8 @@
-# Using Apple Local Chat
+# Using Local Chat
 
 ## Chat in the sidebar
 
-Open **Apple Local Chat** in the Activity Bar, or run **Apple Foundation Models: Open Apple Local Chat** from the Command Palette. Press **Enter** to send and **Shift+Enter** to add a line break. Choose **Stop** to interrupt a reply.
+Open **Local Chat** in the Activity Bar, or run **Local Chat: Open Local Chat** from the Command Palette. Press **Enter** to send and **Shift+Enter** to add a line break. Choose **Stop** to interrupt a reply.
 
 The sidebar keeps conversation history in memory for the current window. **New Chat** clears it, as does reloading the window.
 
@@ -12,7 +12,7 @@ In compatible VS Code Chat clients, choose **Apple On-Device** for text conversa
 
 ## Adjust the token budget
 
-The model’s context window is shared by your instructions, conversation, and reply. The available size depends on the Mac and model. **Apple Foundation Models: Run Setup Check** shows the size reported by your device when the model is ready.
+The model’s context window is shared by your instructions, conversation, and reply. The available size depends on the Mac and model. **Local Chat: Run Setup Check** shows the size reported by your device when the model is ready.
 
 | VS Code setting | Default | Effect |
 | --- | ---: | --- |
@@ -25,9 +25,9 @@ When a conversation fills the window, the helper drops the oldest complete excha
 
 | Symptom | What to do |
 | --- | --- |
-| The model is unavailable | Run **Apple Foundation Models: Run Setup Check** for the reason. If Apple Intelligence is preparing the model, let the download finish and try again. |
+| The model is unavailable | Run **Local Chat: Run Setup Check** for the reason. If Apple Intelligence is preparing the model, let the download finish and try again. |
 | The current request exceeds the input budget | Shorten the selection, prompt, or staged diff. Lowering the output limit also leaves more room for input. |
-| The helper exits during a reply | Retry the request or run **Apple Foundation Models: Restart Local Helper**. **Show Logs** opens the output channel with recorded status checks. |
+| The helper exits during a reply | Retry the request or run **Local Chat: Restart Local Helper**. **Show Logs** opens the output channel with recorded status checks. |
 | Draft Commit Message reports no staged changes | Stage the changes you want summarized in the relevant repository, then run the action again. |
 
 ## Upgrading from 0.1

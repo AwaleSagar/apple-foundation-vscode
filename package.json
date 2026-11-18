@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/AwaleSagar/apple-foundation-vscode/issues"
   },
-  "homepage": "https://github.com/AwaleSagar/apple-foundation-vscode#readme",
+  "homepage": "https://awalelabs.cloud/apps/apple-local-chat-for-vs-code/",
   "keywords": [
     "apple",
     "apple-intelligence",
@@ -39,7 +39,7 @@
   "icon": "media/icon.png",
   "pricing": "Free",
   "galleryBanner": {
-    "color": "#1c1c1e",
+    "color": "#173C30",
     "theme": "dark"
   },
   "extensionKind": [
@@ -207,7 +207,7 @@
       "activitybar": [
         {
           "id": "appleFoundation",
-          "title": "Apple Local Chat",
+          "title": "Local Chat",
           "icon": "media/chat/activity.svg"
         }
       ]
@@ -216,7 +216,7 @@
       "appleFoundation": [
         {
           "id": "appleFoundation.localChat",
-          "name": "Apple Local Chat",
+          "name": "Local Chat",
           "type": "webview"
         }
       ]

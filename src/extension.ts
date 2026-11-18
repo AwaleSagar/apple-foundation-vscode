@@ -7,7 +7,7 @@ import { LocalChat } from './ui/localChat';
 export function activate(context: vscode.ExtensionContext) {
   const client = new NativeClient(context.asAbsolutePath('dist/apple-local-helper'));
   const chat = new LocalChat(client, context.extensionUri);
-  const logs = vscode.window.createOutputChannel('Apple Foundation Models', { log: true });
+  const logs = vscode.window.createOutputChannel('Local Chat', { log: true });
   const command = (id: string, handler: (...args: never[]) => unknown) =>
     vscode.commands.registerCommand('appleFoundation.' + id, handler);
   const status = async () => {
@@ -21,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.StatusBarAlignment.Right,
     100,
   );
-  bar.text = '$(comment-discussion) Apple Local Chat';
+  bar.text = '$(comment-discussion) Local Chat';
   bar.command = 'appleFoundation.openChat';
   bar.show();
   context.subscriptions.push(
@@ -48,7 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     command('manage', async () => {
       const choices = [
-        { label: 'Open Apple Local Chat', id: 'openChat' },
+        { label: 'Open Local Chat', id: 'openChat' },
         { label: 'Check model status', id: 'showStatus' },
         { label: 'Restart local helper', id: 'restartServer' },
         { label: 'Show logs', id: 'showLogs' },

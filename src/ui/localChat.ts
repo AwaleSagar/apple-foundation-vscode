@@ -34,7 +34,7 @@ export class LocalChat implements vscode.WebviewViewProvider {
     view.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src 'nonce-${nonce}'">
-      <link rel="stylesheet" href="${resource('chat.css')}"><title>Apple Local Chat</title></head>
+      <link rel="stylesheet" href="${resource('chat.css')}"><title>Local Chat</title></head>
       <body><header><span id="readiness" role="status"></span><button id="new">New Chat</button></header>
       <main id="turns" aria-label="Conversation" tabindex="0"></main>
       <form><label for="prompt">Message</label><textarea id="prompt" rows="3" placeholder="Ask a question…" required></textarea>

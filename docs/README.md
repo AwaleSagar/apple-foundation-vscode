@@ -7,6 +7,10 @@
 - Check the devices and VS Code versions tested for 0.2.0, with measured response times and prompt results. [Verification report](verification-2026-11-18.md)
 - Read about local inference, data handling, and private vulnerability reporting. [Security policy](../SECURITY.md)
 
+## Identity
+
+Use the [Local Chat brand kit](brand/README.md) for artwork, listing copy, and naming.
+
 ## Building and contributing
 
 | Task | Guide |

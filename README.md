@@ -1,14 +1,16 @@
-# Apple Local Chat for VS Code
+# Local Chat by AwaleLabs
 
-Use Apple’s on-device model to explain selected code, draft a doc comment, or suggest a commit subject from staged changes. The sidebar runs on your Mac, works offline once the model is downloaded, and requires no account.
+**A second look at your code.**
+
+Use Apple’s on-device model in VS Code to explain selected code, draft a doc comment, or suggest a commit subject from staged changes. The sidebar runs on your Mac, works offline once the model is downloaded, and requires no account.
 
 ## Get started
 
 You’ll need VS Code 1.104 or later and an Apple Intelligence–eligible Mac running macOS 26.0 or later.
 
 1. Enable **Apple Intelligence** in System Settings and let the model finish downloading.
-2. In the VS Code Command Palette, run **Extensions: Install from VSIX…** and select the `darwin-arm64` package. To build it from source, follow the [build instructions](DEVELOPMENT.md).
-3. Open **Apple Local Chat** from the Activity Bar. Type a question and press **Enter** to send it.
+2. Install the [extension from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=sagarawale.apple-foundation-vscode), or [build the VSIX from source](DEVELOPMENT.md).
+3. Open the chat bubble in the Activity Bar. Version 0.2.0 labels it **Apple Local Chat**. Type a question and press **Enter** to send it.
 
 ## Work with code
 
