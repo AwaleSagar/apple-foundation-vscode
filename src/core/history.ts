@@ -19,17 +19,15 @@ export function prependHistory(
   current: readonly ChatMessage[],
   history: readonly HistoryTurn[],
 ): ChatMessage[] {
-  if (history.length === 0) {
-    return current.map((m) => ({ role: m.role, content: m.content }));
+  if (history.length === 0) return [...current];
+  const messages = current.filter((message) => message.role === 'system');
+  for (const turn of history) {
+    if (turn.content.trim() !== '') messages.push(turn);
   }
-
-  const system = current.filter((m) => m.role === 'system');
-  const nonSystem = current.filter((m) => m.role !== 'system');
-  const historyMessages: ChatMessage[] = history
-    .filter((t) => t.content.trim() !== '')
-    .map((t) => ({ role: t.role, content: t.content }));
-
-  return [...system, ...historyMessages, ...nonSystem];
+  for (const message of current) {
+    if (message.role !== 'system') messages.push(message);
+  }
+  return messages;
 }
 
 /**

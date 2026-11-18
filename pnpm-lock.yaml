@@ -53,6 +53,9 @@ importers:
       lint-staged:
         specifier: ^16.1.0
         version: 16.4.0
+      markdown-it:
+        specifier: 14.3.0
+        version: 14.3.0
       typescript:
         specifier: ^5.9.0
         version: 5.9.3

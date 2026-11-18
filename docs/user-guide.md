@@ -2,9 +2,11 @@
 
 ## Chat in the sidebar
 
-Open **Local Chat** in the Activity Bar, or run **Local Chat: Open Local Chat** from the Command Palette. Press **Enter** to send and **Shift+Enter** to add a line break. Choose **Stop** to interrupt a reply.
+Open **Local Chat** in the Activity Bar, or run **Local Chat: Open Local Chat** from the Command Palette. Press **Enter** to send and **Shift+Enter** to add a line break. Choose **Stop reply** or press **Escape** in the sidebar to interrupt a reply.
 
-The sidebar keeps conversation history in memory for the current window. **New Chat** clears it, as does reloading the window.
+An empty chat offers **Explain selection**, **Document selection**, and **Draft commit message**. Selecting code enables the first two actions and shows the source filename in the sidebar. Stage changes in Source Control to draft a commit message. The composer shows the model status and its context capacity.
+
+The sidebar keeps conversation history in memory for the current window. Choose **New Local Chat** (**+**) in the view toolbar to clear the conversation and draft. Reloading the window also clears them. The toolbar’s **…** menu includes **Show Status** and **Show Logs**.
 
 ## Use VS Code Chat
 
@@ -19,7 +21,7 @@ The model’s context window is shared by your instructions, conversation, and r
 | `appleFoundation.model.maxContextTokens` | `0` | Use the device’s context window. Set a positive cap to use a smaller window. |
 | `appleFoundation.model.maxOutputTokens` | `1024` | Reserve up to this many tokens for a reply. The helper leaves at least 256 tokens for input. |
 
-When a conversation fills the window, the helper drops the oldest complete exchanges first. On macOS 26.4 and later it counts the assembled input with Apple’s tokenizer. On earlier releases it estimates conservatively. [Apple’s context-window guidance](https://developer.apple.com/documentation/technotes/tn3193-managing-the-on-device-foundation-model-s-context-window)
+The helper starts on demand and exits after one idle minute. Concurrent replies run in arrival order. When a conversation fills the window, the helper drops the oldest complete exchanges first. On macOS 26.4 and later it counts the assembled input with Apple’s tokenizer. On earlier releases it estimates conservatively. [Apple’s context-window guidance](https://developer.apple.com/documentation/technotes/tn3193-managing-the-on-device-foundation-model-s-context-window)
 
 ## Troubleshooting
 

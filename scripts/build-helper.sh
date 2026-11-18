@@ -13,5 +13,5 @@ else
   echo "Building the helper requires the macOS 26.4 SDK or later." >&2
   exit 1
 fi
-xcrun swiftc "$@" -parse-as-library -O -target arm64-apple-macosx26.0 native/Assistant.swift -o dist/apple-local-helper
+xcrun swiftc "$@" -parse-as-library -O -whole-module-optimization -target arm64-apple-macosx26.0 native/*.swift -o dist/apple-local-helper
 codesign --force --sign - dist/apple-local-helper

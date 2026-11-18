@@ -1,12 +1,15 @@
-import { randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { basename } from 'node:path';
 import * as vscode from 'vscode';
 import { turnContext } from '../chat/context';
 import { buildMessages } from '../chat/prompts';
 import { readLimits } from '../core/config';
 import { type HistoryTurn, prependHistory } from '../core/history';
 import type { NativeClient } from '../native/client';
+import { chatView } from './chatView';
 
 interface Exchange {
+  format: 'markdown' | 'code' | 'text';
   user: string;
   assistant: string;
   notice: string;
@@ -19,6 +22,9 @@ export class LocalChat implements vscode.WebviewViewProvider {
   private active: vscode.CancellationTokenSource | undefined;
   private readiness = 'Checking Apple Intelligence…';
   private probe = 0;
+  private conversationId = randomUUID();
+  private draft = '';
+  private focusOnReady = false;
 
   constructor(
     private readonly client: NativeClient,
@@ -27,27 +33,25 @@ export class LocalChat implements vscode.WebviewViewProvider {
 
   resolveWebviewView(view: vscode.WebviewView) {
     this.view = view;
-    const media = vscode.Uri.joinPath(this.root, 'media', 'chat');
-    view.webview.options = { enableScripts: true, localResourceRoots: [media] };
-    const nonce = randomBytes(18).toString('base64');
-    const resource = (file: string) => view.webview.asWebviewUri(vscode.Uri.joinPath(media, file));
-    view.webview.html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${view.webview.cspSource}; script-src 'nonce-${nonce}'">
-      <link rel="stylesheet" href="${resource('chat.css')}"><title>Local Chat</title></head>
-      <body><header><span id="readiness" role="status"></span><button id="new">New Chat</button></header>
-      <main id="turns" aria-label="Conversation" tabindex="0"></main>
-      <form><label for="prompt">Message</label><textarea id="prompt" rows="3" placeholder="Ask a question…" required></textarea>
-      <div class="actions"><span aria-live="polite" id="activity"></span><button type="button" id="stop" hidden>Stop</button><button id="send">Send</button></div></form>
-      <script nonce="${nonce}" src="${resource('chat.js')}"></script></body></html>`;
+    view.webview.html = chatView(view.webview, this.root);
     const listener = view.webview.onDidReceiveMessage(async (message) => {
-      switch (message?.type) {
+      if (!message || (message.type !== 'ready' && message.conversationId !== this.conversationId))
+        return;
+      switch (message.type) {
         case 'ready':
           this.sync();
+          if (this.focusOnReady) {
+            this.focusOnReady = false;
+            this.post({ type: 'focus' });
+          }
           await this.refresh();
           break;
-        case 'new':
-          this.clear();
+        case 'draft':
+          if (typeof message.text === 'string') this.draft = message.text;
+          break;
+        case 'action':
+          if (['explain', 'doc', 'commit'].includes(message.action) && !this.active)
+            await this.run(message.action);
           break;
         case 'stop':
           this.stop();
@@ -58,17 +62,42 @@ export class LocalChat implements vscode.WebviewViewProvider {
           break;
       }
     });
+    let selection = this.selectedFile();
+    const updateSelection = () => {
+      const file = this.selectedFile();
+      if (file === selection) return;
+      selection = file;
+      if (view.visible && !this.turns.length) this.post({ type: 'selection', file });
+    };
+    const selectionListeners = vscode.Disposable.from(
+      vscode.window.onDidChangeActiveTextEditor(updateSelection),
+      vscode.window.onDidChangeTextEditorSelection(updateSelection),
+    );
     view.onDidDispose(() => {
       listener.dispose();
+      selectionListeners.dispose();
       if (this.view === view) this.view = undefined;
     });
+  }
+
+  private selectedFile() {
+    const editor = vscode.window.activeTextEditor;
+    return editor && !editor.selection.isEmpty ? basename(editor.document.fileName) : undefined;
   }
 
   private post(message: object) {
     void this.view?.webview.postMessage(message);
   }
   private sync() {
-    this.post({ type: 'state', turns: this.turns, busy: !!this.active, readiness: this.readiness });
+    this.post({
+      type: 'state',
+      conversationId: this.conversationId,
+      draft: this.draft,
+      selectedFile: this.selectedFile(),
+      turns: this.turns,
+      busy: !!this.active,
+      readiness: this.readiness,
+    });
   }
   async refresh() {
     const probe = ++this.probe;
@@ -86,8 +115,10 @@ export class LocalChat implements vscode.WebviewViewProvider {
     return readiness;
   }
 
-  focus() {
-    return vscode.commands.executeCommand('appleFoundation.localChat.focus');
+  async focus() {
+    this.focusOnReady = !this.view?.visible;
+    await vscode.commands.executeCommand('appleFoundation.localChat.focus');
+    this.post({ type: 'focus' });
   }
   stop() {
     this.active?.cancel();
@@ -95,6 +126,8 @@ export class LocalChat implements vscode.WebviewViewProvider {
   clear() {
     this.stop();
     this.active = undefined;
+    this.conversationId = randomUUID();
+    this.draft = '';
     this.history = [];
     this.turns = [];
     this.sync();
@@ -117,7 +150,12 @@ export class LocalChat implements vscode.WebviewViewProvider {
         : command === 'explain'
           ? 'Explain selection'
           : 'Draft commit message';
-    const turn = { user: command ? label : prompt, assistant: '', notice: '' };
+    const turn: Exchange = {
+      user: command ? label : prompt,
+      assistant: '',
+      notice: '',
+      format: command === 'doc' ? 'code' : command === 'commit' ? 'text' : 'markdown',
+    };
     this.turns.push(turn);
     this.sync();
     try {
@@ -130,6 +168,7 @@ export class LocalChat implements vscode.WebviewViewProvider {
         readLimits(),
         cancellation.token,
         (text) => {
+          if (this.active !== cancellation) return;
           turn.assistant += text;
           this.post({ type: 'delta', text });
         },

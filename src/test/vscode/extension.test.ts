@@ -10,11 +10,14 @@
 /// <reference types="mocha" />
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
+import { NativeClient } from '../../native/client';
 
 const EXTENSION_ID = 'sagarawale.apple-foundation-vscode';
 
 const CONTRIBUTED_COMMANDS = [
   'appleFoundation.openChat',
+  'appleFoundation.newChat',
+  'appleFoundation.stop',
   'appleFoundation.draftCommit',
   'appleFoundation.documentSelection',
   'appleFoundation.explainSelection',
@@ -95,6 +98,44 @@ if (process.env['APPLE_LOCAL_PACKAGE_TEST']) {
       assert.match(await run('openChat', 'Return only cedar.'), /^cedar[.!]?$/i);
       assert.match(await run('restartServer'), /On device/);
       assert.match(await run('openChat', 'Return only oak.'), /^oak[.!]?$/i);
+    });
+
+    test('serves a token count and cancels queued generation during an active stream', async () => {
+      const extension = vscode.extensions.getExtension(EXTENSION_ID);
+      assert.ok(extension);
+      const client = new NativeClient(
+        vscode.Uri.joinPath(extension.extensionUri, 'dist', 'apple-local-helper').fsPath,
+      );
+      const active = new vscode.CancellationTokenSource();
+      const queued = new vscode.CancellationTokenSource();
+      try {
+        const limits = { maxContextTokens: 4096, maxOutputTokens: 512 };
+        const long = client.generate(
+          [{ role: 'user', content: 'List the integers from 1 to 500 in words.' }],
+          limits,
+          active.token,
+          () => {},
+        );
+        const interrupted = assert.rejects(long, /Cancelled/);
+        const next = client.generate(
+          [{ role: 'user', content: 'Return only cedar.' }],
+          limits,
+          queued.token,
+          () => assert.fail('Queued generation produced text before cancellation'),
+        );
+        const discarded = assert.rejects(next, /Cancelled/);
+        queued.cancel();
+        assert.ok((await client.count('🌲 maple', active.token)) > 0);
+        active.cancel();
+        await Promise.all([interrupted, discarded]);
+        assert.ok((await client.status()).context > 0);
+      } finally {
+        active.cancel();
+        queued.cancel();
+        client.dispose();
+        active.dispose();
+        queued.dispose();
+      }
     });
 
     test('runs both editor actions and drafts the staged change from the requested repository', async () => {

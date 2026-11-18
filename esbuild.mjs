@@ -39,9 +39,23 @@ const ctx = await esbuild.context({
   plugins: [esbuildProblemMatcherPlugin],
 });
 
-if (watch) {
-  await ctx.watch();
-} else {
-  await ctx.rebuild();
-  await ctx.dispose();
+const contexts = [ctx];
+if (!tests) {
+  contexts.push(
+    await esbuild.context({
+      entryPoints: ['media/chat/chat.js'],
+      bundle: true,
+      minify: production,
+      target: 'chrome130',
+      outfile: 'dist/webview/chat.js',
+    }),
+  );
 }
+
+await Promise.all(
+  contexts.map(async (build) => {
+    if (watch) return build.watch();
+    await build.rebuild();
+    await build.dispose();
+  }),
+);

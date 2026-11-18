@@ -137,7 +137,8 @@
       {
         "command": "appleFoundation.newChat",
         "title": "%command.newChat.title%",
-        "category": "%category%"
+        "category": "%category%",
+        "icon": "$(add)"
       },
       {
         "command": "appleFoundation.stop",
@@ -240,6 +241,23 @@
           "when": "scmProvider == git",
           "group": "navigation"
         }
+      ],
+      "view/title": [
+        {
+          "command": "appleFoundation.newChat",
+          "when": "view == appleFoundation.localChat",
+          "group": "navigation"
+        },
+        {
+          "command": "appleFoundation.showStatus",
+          "when": "view == appleFoundation.localChat",
+          "group": "1_model@1"
+        },
+        {
+          "command": "appleFoundation.showLogs",
+          "when": "view == appleFoundation.localChat",
+          "group": "1_model@2"
+        }
       ]
     }
   },
@@ -283,6 +301,7 @@
     "esbuild": "^0.25.0",
     "husky": "^9.1.0",
     "lint-staged": "^16.1.0",
+    "markdown-it": "14.3.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   }

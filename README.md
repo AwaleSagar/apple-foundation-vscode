@@ -10,7 +10,7 @@ You’ll need VS Code 1.104 or later and an Apple Intelligence–eligible Mac ru
 
 1. Enable **Apple Intelligence** in System Settings and let the model finish downloading.
 2. Install the [extension from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=sagarawale.apple-foundation-vscode), or [build the VSIX from source](DEVELOPMENT.md).
-3. Open the chat bubble in the Activity Bar. Version 0.2.0 labels it **Apple Local Chat**. Type a question and press **Enter** to send it.
+3. Open **Local Chat** in the Activity Bar. Type a question and press **Enter**, or select code in the editor and choose **Explain selection** in the sidebar.
 
 ## Work with code
 

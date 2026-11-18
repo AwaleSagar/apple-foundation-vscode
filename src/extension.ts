@@ -23,6 +23,8 @@ export function activate(context: vscode.ExtensionContext) {
   );
   bar.text = '$(comment-discussion) Local Chat';
   bar.command = 'appleFoundation.openChat';
+  bar.tooltip = 'Open Local Chat';
+  bar.name = 'Local Chat';
   bar.show();
   context.subscriptions.push(
     client,

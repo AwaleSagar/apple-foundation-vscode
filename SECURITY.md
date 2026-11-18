@@ -21,4 +21,4 @@ confirmed issues. Credit is given in the release notes unless you prefer otherwi
 
 The extension launches its bundled executable by absolute path and sends requests over inherited pipes. The helper selects Apple’s on-device system model. Workspace settings can cap the token budget. The extension stores conversation history in window memory and logs model status without prompts or replies.
 
-The sidebar treats model responses as plain text. Drafting a commit reads staged changes through the built-in Git extension. Users review and apply generated text themselves.
+The sidebar formats model replies with a local Markdown renderer. It escapes raw HTML and disables image and link parsing. Document comments and commit subjects render as literal text. Drafting a commit reads staged changes through the built-in Git extension. Users review and apply generated text themselves.
