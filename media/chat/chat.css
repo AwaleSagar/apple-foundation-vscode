@@ -297,3 +297,9 @@ kbd {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+@media (forced-colors: active) {
+  .mark {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+}
