@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+### Patch Changes
+
+- [`9974f78`](https://github.com/AwaleSagar/apple-foundation-vscode/commit/9974f7857c6e04af27a4fd8b4d0caddca4305fec) Thanks [@AwaleSagar](https://github.com/AwaleSagar)! - Introduce Local Chat by AwaleLabs across the sidebar, extension listing, icon, and setup guide.
+
 All notable changes to this project are documented in this file.
 
 This changelog is generated automatically by [Changesets](https://github.com/changesets/changesets)
