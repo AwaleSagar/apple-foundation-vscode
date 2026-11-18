@@ -14,6 +14,10 @@ import * as vscode from 'vscode';
 const EXTENSION_ID = 'sagarawale.apple-foundation-vscode';
 
 const CONTRIBUTED_COMMANDS = [
+  'appleFoundation.openChat',
+  'appleFoundation.draftCommit',
+  'appleFoundation.documentSelection',
+  'appleFoundation.explainSelection',
   'appleFoundation.manage',
   'appleFoundation.showStatus',
   'appleFoundation.restartServer',
@@ -41,13 +45,9 @@ suite('extension host integration', () => {
 
   test('configuration defaults resolve through VS Code', () => {
     const config = vscode.workspace.getConfiguration('appleFoundation');
-    assert.strictEqual(config.get('bridge.executablePath'), 'fm');
-    assert.strictEqual(config.get('bridge.port'), 9999);
-    assert.strictEqual(config.get('bridge.autoStart'), true);
-    assert.strictEqual(config.get('bridge.idleTimeoutMinutes'), 5);
+    assert.strictEqual(config.get('bridge.executablePath'), undefined);
     assert.strictEqual(config.get('model.maxOutputTokens'), 1024);
-    assert.strictEqual(config.get('model.maxContextTokens'), 4096);
-    assert.strictEqual(config.get('offlineOnlyMode'), false);
+    assert.strictEqual(config.get('model.maxContextTokens'), 0);
   });
 
   test('chat participant and model provider are contributed', () => {
@@ -69,3 +69,71 @@ suite('extension host integration', () => {
     await vscode.commands.executeCommand('appleFoundation.runOnboarding');
   });
 });
+
+// Packaged checks use a disposable repository supplied by scripts/test-package.mjs.
+if (process.env['APPLE_LOCAL_PACKAGE_TEST']) {
+  suite('packaged local assistant', () => {
+    const run = <T = string>(name: string, ...args: unknown[]) =>
+      vscode.commands.executeCommand<T>(`appleFoundation.${name}`, ...args);
+    test('loads the installed VSIX and streams one answer, recalls history, stops, and restarts', async () => {
+      const extension = vscode.extensions.getExtension(EXTENSION_ID);
+      assert.ok(extension?.extensionPath.includes('installed/'));
+      assert.match(await run('showStatus'), /On device/);
+      await run('newChat');
+      assert.match(
+        (await run('openChat', 'Remember the word maple. Reply with only maple.')).trim(),
+        /^maple[.!]?$/i,
+      );
+      assert.match(
+        await run('openChat', 'What word did I ask you to remember? Reply with only that word.'),
+        /^maple[.!]?$/i,
+      );
+      const long = run('openChat', 'List the integers from 1 to 500 in words.');
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      await run('stop');
+      assert.equal(await long, undefined);
+      assert.match(await run('openChat', 'Return only cedar.'), /^cedar[.!]?$/i);
+      assert.match(await run('restartServer'), /On device/);
+      assert.match(await run('openChat', 'Return only oak.'), /^oak[.!]?$/i);
+    });
+
+    test('runs both editor actions and drafts the staged change from the requested repository', async () => {
+      const { execFileSync } = await import('node:child_process');
+      const folder = vscode.workspace.workspaceFolders?.[0];
+      assert.ok(folder);
+      const git = vscode.extensions.getExtension('vscode.git');
+      assert.ok(git);
+      const api = (await git.activate()).getAPI(1);
+      const deadline = Date.now() + 15000;
+      while (!api.getRepository(folder.uri) && Date.now() < deadline)
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      assert.ok(api.getRepository(folder.uri));
+      const file = await vscode.workspace.openTextDocument({
+        language: 'swift',
+        content: '[1, 2, 3].filter { $0 > 1 }\nfunc doubled(_ value: Int) -> Int { value * 2 }',
+      });
+      const editor = await vscode.window.showTextDocument(file);
+      editor.selection = new vscode.Selection(file.lineAt(0).range.start, file.lineAt(0).range.end);
+      const explain = await run('explainSelection');
+      assert.match(explain, /greater than (?:one|1)|>\s*1/i);
+      await vscode.window.showTextDocument(file);
+      editor.selection = new vscode.Selection(file.lineAt(1).range.start, file.lineAt(1).range.end);
+      const doc = await run('documentSelection');
+      assert.match(doc, /doubl|twice|multipl/i);
+      assert.match(doc, /^\/\/\/[^\n]+$/);
+      const source = { rootUri: folder.uri };
+      assert.equal(await run('draftCommit', source), undefined);
+      execFileSync('git', ['add', 'config.ts'], { cwd: folder.uri.fsPath });
+      const subject = await run('draftCommit', source);
+      assert.match(subject, /^(feat|fix|chore|perf|refactor)(\([^)]+\))?: [^\n]+$/);
+      assert.match(subject, /increas|rais|extend|bump/i);
+      assert.match(subject, /timeout/i);
+      assert.ok(
+        execFileSync('git', ['diff', '--cached'], {
+          cwd: folder.uri.fsPath,
+          encoding: 'utf8',
+        }).includes('5000'),
+      );
+    });
+  });
+}

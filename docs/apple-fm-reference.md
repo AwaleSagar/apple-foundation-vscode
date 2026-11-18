@@ -1,5 +1,7 @@
 # Apple Foundation Models — engineering reference
 
+> Historical design notes from the CLI-based release. See the [current architecture](../ARCHITECTURE.md) and [verification report](verification-2026-11-18.md) for version 0.2.
+
 Distilled from Apple's official FoundationModels documentation (crawled 2026-07-19 via
 Firecrawl; raw scrapes live in the untracked `.firecrawl/` directory). This file records the
 facts this extension's design depends on, so they survive doc churn and are reviewable in PRs.

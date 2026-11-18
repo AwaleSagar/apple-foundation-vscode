@@ -12,7 +12,7 @@ concurrency: release-${{ github.ref }}
 jobs:
   release:
     name: Version or publish
-    runs-on: macos-15
+    runs-on: macos-26
     permissions:
       contents: write
       pull-requests: write

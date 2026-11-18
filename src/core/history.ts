@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../bridge/types';
+import type { ChatMessage } from '../native/client';
 
 /**
  * Minimal history turn extracted from VS Code chat context. Kept free of the

@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../bridge/types';
+import type { ChatMessage } from '../native/client';
 
 /**
  * Slash commands the `@apple` participant understands. A missing command means
@@ -22,15 +22,6 @@ export interface TurnContext {
   readonly diff?: string | undefined;
 }
 
-/**
- * The on-device model has a small (~4K) context window, so every instruction
- * is kept terse and a single task is asked per turn.
- *
- * Keep this string byte-stable across turns of a thread: Apple's framework
- * KV-caches the stable prompt prefix (instructions + tools), and any change to
- * it invalidates the cache and adds latency to every subsequent turn
- * (docs/apple-fm-reference.md, "Token & context rules").
- */
 const BASE_RULES =
   'You are Apple On-Device, a private assistant running locally on the developer\u2019s Mac. ' +
   'Be concise and technical. Never invent facts about code you were not shown.';
@@ -58,12 +49,16 @@ function explainMessages(ctx: TurnContext): ChatMessage[] {
 
 function docMessages(ctx: TurnContext): ChatMessage[] {
   const system =
-    `${BASE_RULES} Write a documentation comment for the given code using the ` +
-    'idiomatic style for its language (JSDoc/TSDoc, docstring, etc.). ' +
-    'Output only the comment inside a single code block \u2014 no prose, no restated code.';
+    ctx.languageId === 'swift'
+      ? 'Summarize what the Swift function returns in a single documentation comment. Use the form "/// Returns …".'
+      : 'Write a documentation comment in the language of the selected code. Return only the comment, ready to paste immediately above the declaration.';
   const parts: string[] = [];
   if (ctx.selection !== undefined && ctx.selection.trim() !== '') {
-    parts.push(fenceBlock('Code to document', ctx.selection, ctx.languageId));
+    parts.push(
+      ctx.languageId === 'swift'
+        ? ctx.selection
+        : fenceBlock('Code to document', ctx.selection, ctx.languageId),
+    );
   }
   if (ctx.prompt.trim() !== '') {
     parts.push(ctx.prompt.trim());
@@ -76,11 +71,10 @@ function docMessages(ctx: TurnContext): ChatMessage[] {
 
 function commitMessages(ctx: TurnContext): ChatMessage[] {
   const system =
-    `${BASE_RULES} Write one Conventional Commit message from the staged diff. ` +
-    'Format: `type(scope): summary` (\u226472 chars, imperative mood), then a blank line, ' +
-    'then a short body only if it adds information. ' +
-    'Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore. ' +
-    'Output only the commit message inside a single code block.';
+    `${BASE_RULES} Write one Conventional Commit subject based on the diff. ` +
+    'Start with feat, fix, docs, refactor, test, perf, build, ci, style, or chore followed by a colon. ' +
+    'Use an imperative verb. State the direction of the change and relevant values. ' +
+    'Example: fix: increase retry limit from 1 to 3. Return only the subject without markdown.';
   const parts: string[] = [];
   const diff = ctx.diff ?? '';
   parts.push(fenceBlock('Staged diff', diff, 'diff'));

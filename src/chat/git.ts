@@ -1,53 +1,40 @@
 import * as vscode from 'vscode';
 
-/**
- * Minimal shape of the built-in Git extension API we rely on. Modeled locally
- * to avoid a dependency on the (untyped-by-default) `vscode.git` exports.
- */
-interface GitRepository {
-  readonly rootUri: vscode.Uri;
-  diff(cached?: boolean): Promise<string>;
+interface Repository {
+  rootUri: vscode.Uri;
+  diff(cached: boolean): Promise<string>;
+  ui?: { selected: boolean };
+}
+interface Git {
+  getAPI(version: 1): {
+    repositories: readonly Repository[];
+    getRepository(uri: vscode.Uri): Repository | null;
+  };
 }
 
-interface GitApi {
-  readonly repositories: readonly GitRepository[];
-}
-
-interface GitExtensionExports {
-  getAPI(version: 1): GitApi;
-}
-
-function pickRepository(api: GitApi): GitRepository | undefined {
-  const repos = api.repositories;
-  if (repos.length === 0) {
-    return undefined;
+export async function getStagedDiff(source?: {
+  rootUri?: vscode.Uri | undefined;
+}): Promise<string> {
+  const extension = vscode.extensions.getExtension<Git>('vscode.git');
+  if (!extension) throw new Error('Enable the built-in Git extension to draft a commit.');
+  const api = (await extension.activate()).getAPI(1);
+  const active = vscode.window.activeTextEditor?.document.uri;
+  const selected = api.repositories.filter((repo) => repo.ui?.selected);
+  let repo = source?.rootUri
+    ? api.getRepository(source.rootUri)
+    : ((selected.length === 1 ? selected[0] : undefined) ?? (active && api.getRepository(active)));
+  if (!repo && !source?.rootUri && api.repositories.length > 1) {
+    const choice = await vscode.window.showQuickPick(
+      api.repositories.map((repo) => ({ label: repo.rootUri.fsPath, repo })),
+      { placeHolder: 'Choose a repository for the staged diff' },
+    );
+    if (!choice) throw new Error('Repository selection cancelled.');
+    repo = choice.repo;
   }
-  // Prefer the repository containing the active editor's file.
-  const activeUri = vscode.window.activeTextEditor?.document.uri;
-  if (activeUri !== undefined) {
-    const match = repos.find((repo) => activeUri.fsPath.startsWith(repo.rootUri.fsPath));
-    if (match !== undefined) {
-      return match;
-    }
-  }
-  return repos[0];
-}
-
-/**
- * Return the staged (index-vs-HEAD) diff for the most relevant repository, or
- * `undefined` when Git is unavailable, has no repository, or nothing is staged.
- */
-export async function getStagedDiff(): Promise<string | undefined> {
-  const extension = vscode.extensions.getExtension<GitExtensionExports>('vscode.git');
-  if (extension === undefined) {
-    return undefined;
-  }
-  const exports = extension.isActive ? extension.exports : await extension.activate();
-  const api = exports.getAPI(1);
-  const repo = pickRepository(api);
-  if (repo === undefined) {
-    return undefined;
-  }
+  if (!repo && !source?.rootUri) repo = api.repositories[0];
+  if (!repo) throw new Error('Open a Git repository to draft a commit.');
   const diff = await repo.diff(true);
-  return diff.trim() === '' ? undefined : diff;
+  if (!diff.trim())
+    throw new Error('No staged changes. Stage the changes to summarize and try again.');
+  return diff;
 }

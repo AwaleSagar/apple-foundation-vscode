@@ -1,10 +1,1 @@
-# Try @apple
-
-Mention **@apple** in chat for focused, on-device commands:
-
-- `@apple /explain` — explain the selected code or an error
-- `@apple /doc` — draft a documentation comment for the selection
-- `@apple /commit` — write a Conventional Commit message from your **staged** changes
-
-Free-form `@apple` questions keep the thread's history for multi-turn context. Everything —
-prompts, code, diffs — stays on your Mac.
+Select code and choose **Explain Selection** or **Document Selection** in the editor context menu. Use **Draft Commit Message** in Source Control to review a suggestion for staged changes.

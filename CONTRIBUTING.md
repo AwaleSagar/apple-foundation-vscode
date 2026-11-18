@@ -1,8 +1,7 @@
 # Contributing
 
-Thanks for your interest in improving Apple Foundation Models for VS Code! This document covers
-the mechanics of contributing. For environment setup see [DEVELOPMENT.md](DEVELOPMENT.md); for
-design context see [ARCHITECTURE.md](ARCHITECTURE.md).
+To set up a development environment or understand the on-device inference path, start with the
+[development guide](DEVELOPMENT.md) and [architecture overview](ARCHITECTURE.md).
 
 ## Ground rules
 
@@ -31,7 +30,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/), enforced by
 Git hook and in CI:
 
 ```
-feat(bridge): reuse an externally started afm server
+feat(chat): add local conversation history
 fix(provider): report cancellation without surfacing an error
 docs: clarify Apple Intelligence requirement
 chore(ci): pin macos runner image
@@ -60,16 +59,15 @@ Internal-only changes (CI, refactors, tests) do not need a changeset.
 2. Commits follow Conventional Commits.
 3. Changeset added if user-visible.
 4. Docs updated where behavior changed (README tables, setting descriptions, docs/).
-5. For anything touching the bridge or provider: tested manually in the Extension Development
-   Host on real hardware (macOS 26+, Apple Silicon) — say so in the PR description, or say that
-   you couldn't and why.
+5. For changes to the native helper or model provider, exercise the affected workflow in the
+   Extension Development Host on an eligible Mac. Record the result or any test limitation in the PR.
 
 Every PR needs one approving review. Maintainers may push small fixups to your branch to get a
 PR over the line.
 
 ## Reporting bugs & requesting features
 
-Use the issue templates — the environment details they ask for (macOS version, `afm --version`,
+Use the issue templates — the environment details they ask for (macOS version, model status,
 Apple Intelligence status) are usually the whole diagnosis. Security issues go through
 [SECURITY.md](SECURITY.md), never public issues.
 

@@ -1,5 +1,7 @@
 # Roadmap
 
+> Historical design notes from the CLI-based release. See the [current architecture](ARCHITECTURE.md) and [verification report](docs/verification-2026-11-18.md) for version 0.2.
+
 Direction, not a contract. This roadmap follows the milestone plan in the full research
 document, [apple-fm-vscode-extension-roadmap.md](apple-fm-vscode-extension-roadmap.md)
 (§6 and §15) — read that for the deep rationale, feature brainstorm, and risk register.

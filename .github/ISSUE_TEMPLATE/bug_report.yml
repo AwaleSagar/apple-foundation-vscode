@@ -20,8 +20,8 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Open VS Code chat
-        2. Select "Apple Foundation Models" as the model
+        1. Open Apple Local Chat
+        2. Send a message
         3. ...
     validations:
       required: true
@@ -40,10 +40,10 @@ body:
     validations:
       required: true
   - type: input
-    id: bridge-version
+    id: model-status
     attributes:
-      label: Bridge CLI
-      description: Which bridge you use (`fm` on macOS 27+, or `afm`) and its version if known
+      label: Model status
+      description: Result of the Run Setup Check command
     validations:
       required: false
   - type: dropdown

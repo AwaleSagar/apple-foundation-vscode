@@ -1,5 +1,7 @@
 # Building a macOS-Only VS Code Extension on Apple's On-Device Foundation Models
 
+> Historical design notes from the CLI-based release. See the [current architecture](ARCHITECTURE.md) and [verification report](docs/verification-2026-11-18.md) for version 0.2.
+
 **A 2026 development roadmap: architecture, milestones, features, and MVP-to-production plan**
 
 *Research date: July 2026 · Targets: macOS 26 (Tahoe) / macOS 27, Apple Silicon, VS Code 1.99+*

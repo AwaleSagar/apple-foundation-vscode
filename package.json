@@ -2,7 +2,7 @@
   "name": "apple-foundation-vscode",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "sagarawale",
   "license": "MIT",
   "private": true,
@@ -52,7 +52,7 @@
     },
     "untrustedWorkspaces": {
       "supported": true,
-      "description": "Inference runs against a machine-scoped local bridge; workspaces cannot influence which executable is spawned."
+      "description": "Local inference uses the bundled helper."
     }
   },
   "activationEvents": [],
@@ -112,6 +112,37 @@
         "command": "appleFoundation.runOnboarding",
         "title": "%command.runOnboarding.title%",
         "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.openChat",
+        "title": "%command.openChat.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.explainSelection",
+        "title": "%command.explainSelection.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.documentSelection",
+        "title": "%command.documentSelection.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.draftCommit",
+        "title": "%command.draftCommit.title%",
+        "category": "%category%",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "appleFoundation.newChat",
+        "title": "%command.newChat.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.stop",
+        "title": "%command.stop.title%",
+        "category": "%category%"
       }
     ],
     "walkthroughs": [
@@ -139,7 +170,7 @@
               "markdown": "media/walkthrough/pick-model.md"
             },
             "completionEvents": [
-              "onCommand:workbench.action.chat.open"
+              "onCommand:appleFoundation.openChat"
             ]
           },
           {
@@ -156,32 +187,6 @@
     "configuration": {
       "title": "%displayName%",
       "properties": {
-        "appleFoundation.bridge.executablePath": {
-          "type": "string",
-          "default": "fm",
-          "scope": "machine",
-          "markdownDescription": "%config.executablePath.description%"
-        },
-        "appleFoundation.bridge.port": {
-          "type": "number",
-          "default": 9999,
-          "minimum": 1024,
-          "maximum": 65535,
-          "scope": "machine",
-          "description": "%config.port.description%"
-        },
-        "appleFoundation.bridge.autoStart": {
-          "type": "boolean",
-          "default": true,
-          "description": "%config.autoStart.description%"
-        },
-        "appleFoundation.bridge.idleTimeoutMinutes": {
-          "type": "number",
-          "default": 5,
-          "minimum": 0,
-          "maximum": 120,
-          "description": "%config.idleTimeoutMinutes.description%"
-        },
         "appleFoundation.model.maxOutputTokens": {
           "type": "number",
           "default": 1024,
@@ -191,36 +196,71 @@
         },
         "appleFoundation.model.maxContextTokens": {
           "type": "number",
-          "default": 4096,
-          "minimum": 512,
+          "default": 0,
+          "minimum": 0,
           "maximum": 32768,
           "markdownDescription": "%config.maxContextTokens.description%"
-        },
-        "appleFoundation.offlineOnlyMode": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "%config.offlineOnlyMode.description%"
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "appleFoundation",
+          "title": "Apple Local Chat",
+          "icon": "media/chat/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "appleFoundation": [
+        {
+          "id": "appleFoundation.localChat",
+          "name": "Apple Local Chat",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "appleFoundation.explainSelection",
+          "when": "editorHasSelection",
+          "group": "appleLocal@0"
+        },
+        {
+          "command": "appleFoundation.documentSelection",
+          "when": "editorHasSelection",
+          "group": "appleLocal@1"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "appleFoundation.draftCommit",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        }
+      ]
     }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run build",
-    "build": "node esbuild.mjs --production",
-    "watch": "node esbuild.mjs --watch",
+    "build": "sh scripts/build-helper.sh && node esbuild.mjs --production",
+    "watch": "sh scripts/build-helper.sh && node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:vscode": "node esbuild.mjs && node esbuild.mjs --tests && VSCODE_TEST=true vscode-test",
+    "test:vscode": "sh scripts/build-helper.sh && node esbuild.mjs && node esbuild.mjs --tests && VSCODE_TEST=true vscode-test",
     "verify": "pnpm run check && pnpm run typecheck && pnpm run test",
     "package": "vsce package --no-dependencies --target darwin-arm64",
     "publish:marketplace": "vsce publish --no-dependencies --target darwin-arm64",
     "changeset": "changeset",
     "version": "changeset version",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:helper": "sh scripts/build-helper.sh"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,json}": [

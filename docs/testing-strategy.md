@@ -1,47 +1,16 @@
-# Testing strategy
+# Testing
 
-## Philosophy
+`pnpm run verify` runs Biome, strict TypeScript checks and Vitest. Unit cases cover host eligibility, explicit context caps, prompt construction, message conversion, history, and helper failure recovery. `pnpm run test:vscode` builds the helper and runs extension-host integration checks. These registration and configuration checks also run on hosts where Apple Intelligence is unavailable.
 
-The architecture is deliberately split so that everything with interesting logic is a pure
-function or a thin class with injected dependencies — and therefore unit-testable in
-milliseconds — while the VS Code adapter layer stays too thin to hide bugs. Test effort follows
-that split.
+On an eligible Mac, build an installable package and test the installation using the commands below. The runner creates a fresh profile, an empty extension development driver, and a temporary Git repository. The extension under test is installed from the VSIX. The runner disables built-in AI features and exercises local chat, history, Stop, restart, editor actions, empty and staged diffs. All Git writes are confined to the fixture.
 
-## Layers
+```sh
+pnpm run package
+node esbuild.mjs --tests
+node scripts/test-package.mjs apple-foundation-vscode-darwin-arm64-0.2.0.vsix "/Applications/Visual Studio Code.app/Contents/MacOS/Code"
+node scripts/evaluate.mjs dist/apple-local-helper
+```
 
-| Layer | Tool | Runs | Covers |
-| --- | --- | --- | --- |
-| Unit | Vitest (`src/**/*.test.ts`) | every commit, CI | SSE parsing, availability, config, tokens/budgeting, errors, history, onboarding, message conversion, client (mocked `fetch`) |
-| Live bridge | Vitest (`src/bridge/client.integration.test.ts`) | every commit on Apple Silicon (skips elsewhere) | real `fm serve` health, model list, streaming completion |
-| Integration | `@vscode/test-electron` (planned) | CI | activation, provider registration, command wiring inside a real Extension Host |
-| End-to-end (manual) | Extension Development Host on real hardware | before release; for bridge/provider PRs | actual inference through `fm serve` (or `afm`) on Apple Silicon |
+Pass a downloaded 1.104.0 Electron executable as the second argument to repeat the installed-package checks against the minimum VS Code version. The evaluation accepts an extracted helper path and runs the extension’s actual prompts with an empty executable search path. It prints first-text and completion timings for fresh and reused helper processes and exits unsuccessfully when a fixture fails its quality criteria.
 
-## Rules
-
-- **Unit tests import no real `vscode`.** The Vitest alias maps `vscode` to
-  `src/test/mocks/vscode.ts`. If a test needs more of the API than the stub offers, first ask
-  whether the logic belongs in a purer module; extend the stub only as a last resort.
-- **Test files sit next to the code** (`sse.ts` / `sse.test.ts`) so coverage gaps are visible in
-  the file tree.
-- **Test behavior, not implementation.** Assert on outputs and observable effects; don't assert
-  call counts on internals.
-- **The process manager and HTTP client are exercised at their seams.** `BridgeClient` against a
-  stubbed `fetch`, `BridgeServerManager` in integration tests — we don't mock what we don't own
-  beyond the standard `fetch` boundary.
-- **Coverage is a signal, not a gate.** CI reports it; PRs that drop it noticeably should
-  explain why. No arbitrary threshold that incentivizes assertion-free tests.
-
-## What we deliberately don't test
-
-- Apple's model output quality — non-deterministic and not our contract.
-- The `afm` CLI itself — upstream's responsibility; we test our handling of its success, error,
-  and absence modes.
-- VS Code UI rendering — the Chat UI belongs to VS Code.
-
-## Manual test checklist (release)
-
-1. Fresh profile: model appears in picker on supported hardware; absent on unsupported.
-2. Bridge executable missing/misconfigured → actionable error naming the fix.
-3. Bridge auto-start, and reuse of an externally started `fm serve --port 9999`.
-4. Streaming responds token-by-token; cancel stops promptly; logs stay clean.
-5. Restart command recovers from a killed bridge.
+[Verification results](verification-2026-11-18.md)

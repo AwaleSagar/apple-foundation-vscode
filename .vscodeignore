@@ -34,3 +34,5 @@ ROADMAP.md
 SECURITY.md
 CODE_OF_CONDUCT.md
 *.vsix
+native/**
+scripts/**

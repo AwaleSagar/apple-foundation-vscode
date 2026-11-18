@@ -8,7 +8,7 @@ whole purpose is AI-assisted development. These guidelines keep it healthy.
 1. **You are the author.** Whatever produced the first draft, you submit it, you understand it,
    and you can defend every line in review. "The model wrote it" is never an explanation.
 2. **Verify, don't trust.** AI-generated code must pass `pnpm run verify` and, for anything on
-   the bridge/provider path, be exercised in the Extension Development Host. AI-generated *facts*
+   the native helper or model provider, be exercised in the Extension Development Host. AI-generated *facts*
    (API shapes, version numbers, macOS behavior) must be checked against primary docs — models
    confidently invent VS Code APIs.
 3. **Disclose substantial assistance** in the PR description (a sentence is enough). This isn't
@@ -22,7 +22,7 @@ whole purpose is AI-assisted development. These guidelines keep it healthy.
 ## For AI agents working in this repository
 
 - Read [ARCHITECTURE.md](../ARCHITECTURE.md) and [coding-standards.md](coding-standards.md)
-  before editing; respect the layer direction (`core` ← `bridge` ← `providers`/`commands`).
+  before editing. Keep model sessions in the helper and VS Code UI concerns in the extension host.
 - Run `pnpm run verify` before declaring work done; report failures honestly.
 - Do not add runtime dependencies, network calls on the inference path, or telemetry — these are
   hard project constraints, not style preferences.

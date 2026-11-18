@@ -1,16 +1,14 @@
 import * as vscode from 'vscode';
-import type { ChatMessage } from '../bridge/types';
-
-export { estimateTokens } from '../core/tokens';
+import type { ChatMessage } from '../native/client';
 
 /**
- * Convert VS Code chat request messages to the OpenAI-compatible wire format.
+ * Convert VS Code chat request messages to the native message format.
  *
  * Only text parts are forwarded: the on-device model accepts text-only input,
  * and tool-call parts are filtered out because the provider advertises no
  * tool-calling capability.
  */
-export function toBridgeMessages(
+export function toMessages(
   messages: readonly vscode.LanguageModelChatRequestMessage[],
 ): ChatMessage[] {
   const result: ChatMessage[] = [];

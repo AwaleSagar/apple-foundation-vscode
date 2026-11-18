@@ -1,0 +1,91 @@
+:root {
+  color-scheme: light dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--vscode-sideBar-background);
+  color: var(--vscode-foreground);
+  font: var(--vscode-font-size) / 1.5 var(--vscode-font-family);
+}
+header,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+header span,
+#activity,
+.notice {
+  font-size: 0.9em;
+  color: var(--vscode-descriptionForeground);
+}
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px;
+}
+article {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+.speaker {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 0 0 3px;
+}
+.message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0 0 12px;
+  user-select: text;
+}
+form {
+  padding: 10px 12px;
+}
+textarea,
+button {
+  font: inherit;
+}
+textarea {
+  display: block;
+  resize: vertical;
+  margin: 4px 0 8px;
+  padding: 7px;
+  width: 100%;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+}
+button {
+  border: 1px solid var(--vscode-contrastBorder, transparent);
+  border-radius: 2px;
+  padding: 3px 10px;
+  cursor: pointer;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+#send {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+button:disabled {
+  opacity: 0.5;
+}
+#activity {
+  flex: 1;
+}
+:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}

@@ -5,32 +5,30 @@ automated. This document covers the judgment calls tools can't check.
 
 ## Language & style
 
-- TypeScript only, strict mode with all extra safety flags on. No `any` (Biome errors), no
+- Use strict TypeScript in the extension host and Swift in the native helper. No `any` (Biome errors), no
   non-null assertions — model the uncertainty instead.
 - `verbatimModuleSyntax` is on: use `import type` for types.
-- No `console.*` in `src/` (Biome errors) — log through the `Logger` interface so output lands
-  in the user-visible channel at the right level.
+- No `console.*` in `src/` (Biome errors) — use the extension’s log output channel for user-visible diagnostics.
 - Formatting is Biome's job. Never hand-format; never discuss formatting in review.
 
 ## Naming conventions
 
 | Thing | Convention | Example |
 | --- | --- | --- |
-| Files | camelCase, suffix by role | `afmClient.ts`, `chatProvider.ts`, `sse.test.ts` |
-| Classes | PascalCase noun | `AfmServerManager` |
-| Functions | camelCase verb phrase | `readBridgeConfig`, `toBridgeMessages` |
-| Constants | SCREAMING_SNAKE for module constants | `STARTUP_TIMEOUT_MS` |
+| Files | camelCase, suffix by role | `chatProvider.ts`, `client.test.ts` |
+| Classes | PascalCase noun | `NativeClient` |
+| Functions | camelCase verb phrase | `readLimits`, `toMessages` |
+| Constants | SCREAMING_SNAKE for module constants | `MIN_DARWIN_MAJOR` |
 | VS Code contributions | `appleFoundation.` prefix | `appleFoundation.showStatus` |
-| Settings | `appleFoundation.<area>.<name>` | `appleFoundation.bridge.port` |
+| Settings | `appleFoundation.<area>.<name>` | `appleFoundation.model.maxOutputTokens` |
 
 Units go in names: `timeoutMs`, `maxOutputTokens`, never bare `timeout`.
 
 ## Folder organization
 
-`core` → `bridge` → `providers`/`commands` → `extension.ts`, dependencies point strictly left.
-New code goes in the leftmost layer that can host it: logic that doesn't need VS Code APIs is a
-pure function in `core`/`bridge` (unit-testable); VS Code adaptation stays thin in
-`providers`/`commands`. If a module needs both, split it (see `messages.ts` vs `chatProvider.ts`).
+The Swift helper in `native/` owns model sessions and token budgeting. Its TypeScript client in
+`src/native/` manages the process and request protocol. Keep VS Code UI concerns in the sidebar,
+chat participant, and provider. Put shared settings and history handling in `src/core/`.
 
 ## Error handling
 
