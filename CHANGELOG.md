@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2
+
+### Patch Changes
+
+- [`53bbda6`](https://github.com/AwaleSagar/apple-foundation-vscode/commit/53bbda67cd9b28e54aa027b225fc022dcd2efdb4) Thanks [@AwaleSagar](https://github.com/AwaleSagar)! - Redesign the Local Chat sidebar with selection and commit actions, formatted replies, and a keyboard-accessible composer that remembers unsent drafts in the current window.
+
+- [`53bbda6`](https://github.com/AwaleSagar/apple-foundation-vscode/commit/53bbda67cd9b28e54aa027b225fc022dcd2efdb4) Thanks [@AwaleSagar](https://github.com/AwaleSagar)! - Speed up long-chat history trimming and streaming. Bound concurrent native work, release the helper after an idle minute, and recover stalled requests.
+
 ## 0.2.1
 
 ### Patch Changes
