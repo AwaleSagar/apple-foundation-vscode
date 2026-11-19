@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+### Minor Changes
+
+- [`c8a0ffc`](https://github.com/AwaleSagar/apple-foundation-vscode/commit/c8a0ffc154468d826f8159fbe4a13b49f65b6a45) Thanks [@AwaleSagar](https://github.com/AwaleSagar)! - Suggest code blocks inline from standalone comments using the active language and Apple’s on-device model.
+
+- [`c8a0ffc`](https://github.com/AwaleSagar/apple-foundation-vscode/commit/c8a0ffc154468d826f8159fbe4a13b49f65b6a45) Thanks [@AwaleSagar](https://github.com/AwaleSagar)! - Review an on-device implementation of a single comment in a diff, optionally guided by a selected local code example. Apply the proposal as one undoable edit.
+
 ## 0.2.2
 
 ### Patch Changes
