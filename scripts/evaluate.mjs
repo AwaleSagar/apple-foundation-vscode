@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { buildMessages } from '../src/chat/prompts.ts';
+import { completionMessages, formatCompletion } from '../src/inline/completion.ts';
 import { decodeReply, encodeRequest, FrameReader } from '../src/native/protocol.ts';
 
 const executable = resolve(process.argv[2] ?? 'dist/apple-local-helper');
@@ -26,6 +27,36 @@ const cases = [
       /increas|rais|extend|bump/i,
       /timeout/i,
       /(?:2000|2\s*s).*?(?:5000|5\s*s)/i,
+    ],
+  },
+  {
+    command: 'inline-python',
+    messages: completionMessages(
+      'python',
+      'Return the unique names in their original order',
+      'def unique_names(names):\n',
+      '',
+      3712,
+    ),
+    maxOutputTokens: 384,
+    checks: [/^return\b/m, /\bnames\b/, /^(?![\s\S]*def unique_names)/],
+  },
+  {
+    command: 'inline-typescript',
+    messages: completionMessages(
+      'typescript',
+      'Use a for loop to add each cost to a running total and return it',
+      'function total(costs: number[]) {\n',
+      '}',
+      3712,
+    ),
+    maxOutputTokens: 384,
+    checks: [
+      /\breturn\b/,
+      /\bcosts\b/,
+      /\bfor\s*\(/,
+      /\b(?:let|var)\s+\w+(?:\s*:\s*number)?\s*=\s*0\s*;?\s*\n/,
+      /^(?![\s\S]*function total)/,
     ],
   },
   {
@@ -85,6 +116,7 @@ for (const fixture of cases) {
         });
       }
       assert.equal(trims, fixture.command === 'history' ? 1 : 0);
+      if (fixture.command.startsWith('inline-')) text = formatCompletion(text, '', '\n') ?? '';
       const score = fixture.checks.filter((test) => test.test(text)).length;
       failed ||= score < fixture.checks.length;
       process.stdout.write(

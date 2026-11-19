@@ -27,5 +27,11 @@
   "command.documentSelection.title": "Document Selection",
   "command.draftCommit.title": "Draft Commit Message",
   "command.newChat.title": "New Local Chat",
-  "command.stop.title": "Stop Local Reply"
+  "command.stop.title": "Stop Local Reply",
+  "config.inlineCompletions.description": "Suggest code on the blank line after a comment using the on-device model.",
+  "command.implementComment.title": "Implement This Comment",
+  "command.applyImplementation.title": "Apply Implementation",
+  "command.discardImplementation.title": "Discard Implementation",
+  "command.useReference.title": "Use Selection as Implementation Reference",
+  "command.clearReference.title": "Clear Implementation Reference"
 }

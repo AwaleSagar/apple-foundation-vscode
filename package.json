@@ -55,7 +55,22 @@
       "description": "Local inference uses the bundled helper."
     }
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "onLanguage:swift",
+    "onLanguage:go",
+    "onLanguage:rust",
+    "onLanguage:java",
+    "onLanguage:c",
+    "onLanguage:cpp",
+    "onLanguage:csharp",
+    "onLanguage:python",
+    "onLanguage:ruby",
+    "onLanguage:shellscript"
+  ],
   "contributes": {
     "languageModelChatProviders": [
       {
@@ -144,6 +159,33 @@
         "command": "appleFoundation.stop",
         "title": "%command.stop.title%",
         "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.implementComment",
+        "title": "%command.implementComment.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.applyImplementation",
+        "title": "%command.applyImplementation.title%",
+        "category": "%category%",
+        "icon": "$(check)"
+      },
+      {
+        "command": "appleFoundation.discardImplementation",
+        "title": "%command.discardImplementation.title%",
+        "category": "%category%",
+        "icon": "$(close)"
+      },
+      {
+        "command": "appleFoundation.useReference",
+        "title": "%command.useReference.title%",
+        "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.clearReference",
+        "title": "%command.clearReference.title%",
+        "category": "%category%"
       }
     ],
     "walkthroughs": [
@@ -201,6 +243,12 @@
           "minimum": 0,
           "maximum": 32768,
           "markdownDescription": "%config.maxContextTokens.description%"
+        },
+        "appleFoundation.inlineCompletions.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "language-overridable",
+          "description": "%config.inlineCompletions.description%"
         }
       }
     },
@@ -233,6 +281,11 @@
           "command": "appleFoundation.documentSelection",
           "when": "editorHasSelection",
           "group": "appleLocal@1"
+        },
+        {
+          "command": "appleFoundation.useReference",
+          "when": "editorHasSelection",
+          "group": "appleLocal@2"
         }
       ],
       "scm/title": [
@@ -257,6 +310,28 @@
           "command": "appleFoundation.showLogs",
           "when": "view == appleFoundation.localChat",
           "group": "1_model@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "appleFoundation.applyImplementation",
+          "when": "isInDiffEditor && resourceScheme == apple-foundation-proposal",
+          "group": "navigation@1"
+        },
+        {
+          "command": "appleFoundation.discardImplementation",
+          "when": "isInDiffEditor && resourceScheme == apple-foundation-proposal",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "appleFoundation.applyImplementation",
+          "when": "isInDiffEditor && resourceScheme == apple-foundation-proposal"
+        },
+        {
+          "command": "appleFoundation.discardImplementation",
+          "when": "isInDiffEditor && resourceScheme == apple-foundation-proposal"
         }
       ]
     }

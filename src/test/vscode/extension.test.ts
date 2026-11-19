@@ -8,6 +8,8 @@
  * test here may require live inference.
  */
 /// <reference types="mocha" />
+import './inline';
+import './commentReview';
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { NativeClient } from '../../native/client';
@@ -15,6 +17,11 @@ import { NativeClient } from '../../native/client';
 const EXTENSION_ID = 'sagarawale.apple-foundation-vscode';
 
 const CONTRIBUTED_COMMANDS = [
+  'appleFoundation.useReference',
+  'appleFoundation.clearReference',
+  'appleFoundation.implementComment',
+  'appleFoundation.applyImplementation',
+  'appleFoundation.discardImplementation',
   'appleFoundation.openChat',
   'appleFoundation.newChat',
   'appleFoundation.stop',

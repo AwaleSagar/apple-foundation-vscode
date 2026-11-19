@@ -8,6 +8,22 @@ An empty chat offers **Explain selection**, **Document selection**, and **Draft 
 
 The sidebar keeps conversation history in memory for the current window. Choose **New Local Chat** (**+**) in the view toolbar to clear the conversation and draft. Reloading the window also clears them. The toolbar’s **…** menu includes **Show Status** and **Show Logs**.
 
+## Complete code from a comment
+
+Inside a function such as `def unique_names(names):`, write an indented comment like `# Return the unique names in their original order` and press **Enter**. Pause on the blank line to see a suggestion. **Tab** accepts it and **Escape** dismisses it. To request it again, run **Trigger Inline Suggestion** on that line.
+
+The editor’s language mode determines the comment syntax and the language of the generated block. JavaScript, TypeScript (including JSX and TSX), Swift, Go, Rust, Java, C, C++, and C# support standalone `//` comments and closed `/* … */` blocks. Python, Ruby, and shell scripts support `#` comments. Consecutive comment lines form one instruction. The model sees the instruction and nearby code from the current document.
+
+Suggestions are enabled by default. Turn off `appleFoundation.inlineCompletions.enabled` to disable them globally or for an individual language. VS Code’s `editor.inlineSuggest.enabled` setting also applies.
+
+## Review an implementation before inserting it
+
+Put the cursor anywhere inside a standalone comment block and choose **Implement This Comment** from the editor lightbulb or run **Local Chat: Implement This Comment** from the Command Palette. This action also works when automatic inline suggestions are disabled. Separate tasks with a blank line so you can generate and review them individually.
+
+The diff shows the proposed insertion beneath the chosen comment. **Apply Implementation** (check mark) inserts it as a single undoable edit. **Discard Implementation** (close icon) closes the proposal. Editing the source after generation invalidates the proposal. Run the action again against the updated text.
+
+To give the model an example, select a snippet in any text editor and choose **Local Chat: Use Selection as Implementation Reference**. Its filename appears in the status bar. The next **Implement This Comment** request takes that snapshot, up to 4 KiB, as a local example. Click the status item to clear it, or select another example to replace it. The reference stays in window memory and is consumed when generation starts, including requests you cancel. Inline suggestions and sidebar chats use their usual context.
+
 ## Use VS Code Chat
 
 In compatible VS Code Chat clients, choose **Apple On-Device** for text conversations or mention `@apple`. The participant accepts `/explain` and `/doc` for selected code and `/commit` for staged changes. Agent-mode pickers require tool calling and can hide text-only models. You can always open the dedicated sidebar, including when VS Code’s built-in AI features are disabled. [VS Code model guide](https://code.visualstudio.com/docs/agent-customization/language-models)

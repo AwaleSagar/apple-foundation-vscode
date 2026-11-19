@@ -67,6 +67,13 @@ export class Connection {
     this.scheduleIdle();
   }
 
+  get generating() {
+    for (const request of this.pending.values()) {
+      if (request.expected === 'done' && !request.cancelTimeout) return true;
+    }
+    return false;
+  }
+
   request(
     request: Exclude<Request, { op: 'cancel' }>,
     token?: vscode.CancellationToken,

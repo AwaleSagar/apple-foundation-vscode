@@ -9,6 +9,10 @@ export class NativeClient {
   private connection?: Connection | undefined;
   constructor(private readonly executable: string) {}
 
+  get generating() {
+    return this.connection?.generating ?? false;
+  }
+
   private connect(token?: vscode.CancellationToken) {
     if (token?.isCancellationRequested) throw new Error('Cancelled.');
     if (!this.connection) {

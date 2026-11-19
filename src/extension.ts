@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { registerChatParticipant } from './chat/participant';
+import { registerCommentCompletions } from './inline/provider';
+import { registerCommentReviews } from './inline/review';
 import { NativeClient } from './native/client';
 import { AppleFoundationChatProvider } from './providers/chatProvider';
 import { LocalChat } from './ui/localChat';
@@ -63,5 +65,7 @@ export function activate(context: vscode.ExtensionContext) {
       new AppleFoundationChatProvider(client),
     ),
     registerChatParticipant(client),
+    registerCommentCompletions(client),
+    registerCommentReviews(client),
   );
 }

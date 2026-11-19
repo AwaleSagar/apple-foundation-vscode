@@ -91,10 +91,12 @@ it('cancels only the addressed stream and ignores its in-flight output', async (
   const delta = vi.fn();
   const trimmed = vi.fn();
   const generation = client.generate([], options, stop, delta, trimmed);
+  expect(client.generating).toBe(true);
   const id = helper.stdin.read().readUInt32LE(5);
   helper.stdout.write(frame(id, 4));
   helper.stdout.write(frame(id, 3, Buffer.from('🌿')));
   stop.cancel();
+  expect(client.generating).toBe(false);
   expect(helper.stdin.read()).toEqual(frame(id, 4));
   const count = client.count('🌿', token());
   const countId = helper.stdin.read().readUInt32LE(5);
