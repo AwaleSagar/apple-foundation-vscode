@@ -102,6 +102,7 @@ if (process.env['APPLE_LOCAL_PACKAGE_TEST']) {
         await run('openChat', 'What word did I ask you to remember? Reply with only that word.'),
         /^maple[.!]?$/i,
       );
+      await run('newChat');
       const long = run('openChat', 'List the integers from 1 to 500 in words.');
       await new Promise((resolve) => setTimeout(resolve, 350));
       await run('stop');
@@ -156,6 +157,7 @@ if (process.env['APPLE_LOCAL_PACKAGE_TEST']) {
       const git = vscode.extensions.getExtension('vscode.git');
       assert.ok(git);
       const api = (await git.activate()).getAPI(1);
+      if (!api.getRepository(folder.uri)) await api.openRepository(folder.uri);
       const deadline = Date.now() + 15000;
       while (!api.getRepository(folder.uri) && Date.now() < deadline)
         await new Promise((resolve) => setTimeout(resolve, 100));
