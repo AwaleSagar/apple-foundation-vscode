@@ -80,3 +80,35 @@ it('fits a very long conversation by dropping whole oldest pairs before encoding
   expected[17] = 1;
   expect(frame).toEqual(expected);
 });
+
+it('trims leading assistant messages and fits conversations into remaining availableBytes', () => {
+  const prompt = { role: 'user', content: 'current prompt' } as const;
+  const limits = { maxContextTokens: 8192, maxOutputTokens: 128 };
+  const leadingAssistant = encodeRequest(1, {
+    op: 'generate',
+    ...limits,
+    messages: [
+      { role: 'assistant', content: 'welcome' },
+      { role: 'user', content: 'x'.repeat(MAX_BODY_BYTES) },
+      { role: 'assistant', content: 'old' },
+      prompt,
+    ],
+  });
+  expect(leadingAssistant[17]).toEqual(1);
+
+  const shrunk = encodeRequest(
+    1,
+    {
+      op: 'generate',
+      ...limits,
+      messages: [
+        { role: 'user', content: 'x'.repeat(2048) },
+        { role: 'assistant', content: 'old reply' },
+        prompt,
+      ],
+    },
+    256,
+  );
+  expect(shrunk.length).toBeLessThanOrEqual(256);
+  expect(shrunk[17]).toEqual(1);
+});

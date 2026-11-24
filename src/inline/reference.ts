@@ -48,6 +48,10 @@ export class ImplementationReference {
     void vscode.window.showInformationMessage('Select a shorter code example (up to 4 KiB).');
   }
 
+  peek() {
+    return this.selection;
+  }
+
   take() {
     const result = this.selection;
     this.selection = undefined;

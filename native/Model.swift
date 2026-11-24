@@ -34,6 +34,8 @@ func errorMessage(_ error: Error) -> String {
     return error.localizedDescription
 }
 
+private let responseFramingOverhead = 96
+
 @MainActor
 func runModel(_ operation: Operation, emit: (Reply) -> Void) async throws -> Reply {
     let model = SystemLanguageModel.default
@@ -51,7 +53,10 @@ func runModel(_ operation: Operation, emit: (Reply) -> Void) async throws -> Rep
     case let .generate(messages, context, output, trimmed):
         let window = min(contextSize(model), max(512, context))
         let reserved = min(max(16, output), window - 256)
-        let input = try await prepareInput(messages, model: model, budget: window - reserved)
+        let headroom: Int
+        if #available(macOS 26.4, *) { headroom = responseFramingOverhead } else { headroom = 0 }
+        let inputBudget = max(128, window - reserved - headroom)
+        let input = try await prepareInput(messages, model: model, budget: inputBudget)
         if trimmed || input.trimmed { emit(.trimmed) }
         try Task.checkCancellation()
         let session = LanguageModelSession(model: model, transcript: input.transcript)

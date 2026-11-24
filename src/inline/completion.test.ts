@@ -122,3 +122,27 @@ it('omits an earlier unimplemented comment and budgets for a complete reference'
   expect(prompt).not.toContain('something_else');
   expect(build(100)).toBeUndefined();
 });
+
+it('handles globs inside block comments, // lines inside block comments, and doc comments before helpers', () => {
+  expect(read('typescript', '/* Copy files from src/* to dist/ */')).toEqual({
+    start: 0,
+    text: 'Copy files from src/* to dist/',
+    indent: '',
+  });
+  const blockLines = ['/*', '  // example inside block', '*/'];
+  expect(commentAt('typescript', 1, blockLines.length, (i) => blockLines[i] ?? '')).toEqual({
+    start: 0,
+    end: 2,
+    text: '// example inside block',
+    indent: '',
+  });
+  const withHelperDoc = completionMessages(
+    'typescript',
+    'Sum values',
+    '',
+    '// Helper used below\nfunction helper() { return 1; }\n\n// Unrelated future task',
+    2048,
+  );
+  expect(withHelperDoc?.[1]?.content).toContain('function helper()');
+  expect(withHelperDoc?.[1]?.content).not.toContain('Unrelated future task');
+});

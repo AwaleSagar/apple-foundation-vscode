@@ -30,8 +30,11 @@
   "command.stop.title": "Stop Local Reply",
   "config.inlineCompletions.description": "Suggest code on the blank line after a comment using the on-device model.",
   "command.implementComment.title": "Implement This Comment",
-  "command.applyImplementation.title": "Apply Implementation",
-  "command.discardImplementation.title": "Discard Implementation",
+  "command.applyImplementation.title": "Apply Proposed Edit",
+  "command.discardImplementation.title": "Discard Proposed Edit",
   "command.useReference.title": "Use Selection as Implementation Reference",
-  "command.clearReference.title": "Clear Implementation Reference"
+  "command.clearReference.title": "Clear Implementation Reference",
+  "command.editInline.title": "Edit Inline",
+  "command.previewInlineEdit.title": "Preview Edit",
+  "command.cancelInlineEdit.title": "Cancel Inline Edit"
 }

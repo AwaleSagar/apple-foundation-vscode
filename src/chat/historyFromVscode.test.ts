@@ -61,4 +61,19 @@ describe('historyFromChatContext', () => {
     const history = historyFromChatContext(ctx([{ prompt: '   ' }, { prompt: 'real' }]));
     expect(history).toEqual([{ role: 'user', content: 'real' }]);
   });
+
+  it('drops unanswered prompts followed by an empty response and keeps slash commands paired', () => {
+    const history = historyFromChatContext({
+      history: [
+        { prompt: '', command: 'explain' },
+        { response: [{ value: { value: 'Explained the code.' } }] },
+        { prompt: 'failed request' },
+        { response: [] },
+      ],
+    } as unknown as ChatContext);
+    expect(history).toEqual([
+      { role: 'user', content: '/explain' },
+      { role: 'assistant', content: 'Explained the code.' },
+    ]);
+  });
 });

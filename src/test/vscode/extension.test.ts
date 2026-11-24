@@ -10,6 +10,7 @@
 /// <reference types="mocha" />
 import './inline';
 import './commentReview';
+import './inlineEdit';
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { NativeClient } from '../../native/client';
@@ -17,6 +18,9 @@ import { NativeClient } from '../../native/client';
 const EXTENSION_ID = 'sagarawale.apple-foundation-vscode';
 
 const CONTRIBUTED_COMMANDS = [
+  'appleFoundation.editInline',
+  'appleFoundation.previewInlineEdit',
+  'appleFoundation.cancelInlineEdit',
   'appleFoundation.useReference',
   'appleFoundation.clearReference',
   'appleFoundation.implementComment',

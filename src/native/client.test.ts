@@ -183,3 +183,26 @@ it('releases the byte budget only when a large request finishes', async () => {
   helper.stdout.write(frame(helper.stdin.read().readUInt32LE(5), 2, Buffer.from([20, 0, 0, 0])));
   await expect(next).resolves.toBe(20);
 });
+
+it('formats ENOENT spawn errors clearly and forwards stderr and errors to the logger', async () => {
+  const logger = { warn: vi.fn(), error: vi.fn() };
+  const logged = new NativeClient('/missing/helper', logger);
+  const missing = child();
+  const pending = logged.status();
+  const enoent = Object.assign(new Error('spawn /missing/helper ENOENT'), { code: 'ENOENT' });
+  missing.emit('error', enoent);
+  await expect(pending).rejects.toThrow('bundled local helper could not be started');
+  expect(logger.error).toHaveBeenCalledWith(
+    expect.stringContaining('bundled local helper could not be started'),
+  );
+
+  const running = child();
+  const status = logged.status();
+  running.stderr.write('diagnostic warning\n');
+  running.stdout.write(
+    frame(running.stdin.read().readUInt32LE(5), 1, Buffer.from([0, 16, 0, 0, 1])),
+  );
+  await expect(status).resolves.toHaveProperty('context', 4096);
+  expect(logger.warn).toHaveBeenCalledWith('helper stderr: diagnostic warning');
+  logged.dispose();
+});

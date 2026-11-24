@@ -41,6 +41,18 @@ export interface ChatContext {
   readonly history: readonly (ChatRequestTurn | ChatResponseTurn)[];
 }
 
+export class Range {
+  constructor(
+    readonly start: { line: number; character: number },
+    readonly end: { line: number; character: number },
+  ) {}
+}
+
+export enum EndOfLine {
+  LF = 1,
+  CRLF = 2,
+}
+
 export const workspace = {
   getConfiguration: () => ({
     get: () => undefined,

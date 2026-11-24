@@ -15,6 +15,22 @@ const MAX_PENDING_BYTES = 16 * 1024 * 1024;
 const IDLE_MS = 60_000;
 const STALL_MS = 120_000;
 const CANCEL_GRACE_MS = 10_000;
+const FORCE_KILL_MS = 2_000;
+
+export interface HelperLogger {
+  warn(message: string): void;
+  error(message: string): void;
+}
+
+function formatSpawnError(error: Error): Error {
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code === 'ENOENT' || code === 'EACCES') {
+    return new Error(
+      'The bundled local helper could not be started (binary missing or not executable). Reinstall Local Chat for macOS (Apple Silicon).',
+    );
+  }
+  return error;
+}
 
 interface Pending {
   bytes: number;
@@ -39,17 +55,28 @@ export class Connection {
   constructor(
     executable: string,
     private readonly onClose: () => void,
+    private readonly logger?: HelperLogger,
   ) {
     const child = spawn(executable, [], { stdio: 'pipe' });
     this.child = child;
-    child.stderr.resume();
-    const failed = (error: Error) => this.close(error);
-    child.on('error', failed);
-    child.stdin.on('error', failed);
-    child.stderr.on('error', failed);
-    child.stdout.on('error', failed);
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (chunk: string) => {
+      const text = chunk.trim();
+      if (text) this.logger?.warn(`helper stderr: ${text.slice(0, 1024)}`);
+    });
+    const failed = (error: Error, log = true) => {
+      if (log && !this.closed) this.logger?.error(error.message);
+      this.close(error);
+    };
+    child.on('error', (error) => failed(formatSpawnError(error)));
+    child.stdin.on('error', (error) => failed(error));
+    child.stderr.on('error', (error) => failed(error));
+    child.stdout.on('error', (error) => failed(error));
     child.on('close', (code, signal) =>
-      failed(new Error(`Local helper exited (${signal ?? code}). Retry to restart it.`)),
+      failed(
+        new Error(`Local helper exited (${signal ?? code}). Retry to restart it.`),
+        code !== 0 || signal !== null,
+      ),
     );
     child.stdout.on('end', () =>
       failed(new Error('The local helper closed its output. Retry the request.')),
@@ -88,10 +115,11 @@ export class Connection {
     const frame = encodeRequest(id, request, MAX_PENDING_BYTES - this.pendingBytes);
 
     clearTimeout(this.idle);
-    this.watchdog ??= setTimeout(
-      () => this.close(new Error('The local helper stopped responding. Retry the request.')),
-      STALL_MS,
-    ).unref();
+    this.watchdog ??= setTimeout(() => {
+      const error = new Error('The local helper stopped responding. Retry the request.');
+      this.logger?.error(error.message);
+      this.close(error);
+    }, STALL_MS).unref();
     return new Promise((resolve, reject) => {
       const pending: Pending = {
         bytes: frame.length,
@@ -118,13 +146,13 @@ export class Connection {
     if (pending.cancelTimeout || !this.pending.has(id)) return;
     pending.reject(error);
     // Keep admission credit until native work actually terminates.
-    pending.cancelTimeout = setTimeout(
-      () =>
-        this.close(
-          new Error('The local helper stopped responding to cancellation. Retry the request.'),
-        ),
-      CANCEL_GRACE_MS,
-    ).unref();
+    pending.cancelTimeout = setTimeout(() => {
+      const cancelError = new Error(
+        'The local helper stopped responding to cancellation. Retry the request.',
+      );
+      this.logger?.error(cancelError.message);
+      this.close(cancelError);
+    }, CANCEL_GRACE_MS).unref();
     this.child.stdin.write(encodeRequest(id, { op: 'cancel' }));
   }
 
@@ -170,6 +198,13 @@ export class Connection {
     clearTimeout(this.watchdog);
     this.onClose();
     this.child.kill();
+    if (this.child.exitCode === null && this.child.signalCode === null) {
+      setTimeout(() => {
+        if (this.child.exitCode === null && this.child.signalCode === null) {
+          this.child.kill('SIGKILL');
+        }
+      }, FORCE_KILL_MS).unref();
+    }
     for (const pending of this.pending.values()) {
       pending.subscription?.dispose();
       clearTimeout(pending.cancelTimeout);

@@ -51,8 +51,8 @@ export function readInstruction(
       const content = i === end ? line.slice(0, -2) : line;
       open = !content.startsWith('/*');
       const body = open ? content : content.slice(2);
-      // An opener after code or an intervening delimiter isn't a standalone block.
-      if (body.includes('/*') || body.includes('*/')) return;
+      // Reject intervening closers or an opener preceded by code on the same line.
+      if (body.includes('*/') || (open && !body.startsWith('*') && body.includes('/*'))) return;
       parts.push(body.replace(/^\*+/, '').trim());
       if (!open) break;
     } else {
@@ -68,6 +68,15 @@ export function readInstruction(
   if (!open && text) return { start, text, indent: /^\s*/.exec(lineAt(start))?.[0] ?? '' };
 }
 
+function insideBlockComment(line: number, lineAt: (i: number) => string) {
+  for (let i = line - 1; i >= 0 && line - i < MAX_COMMENT_LINES; i--) {
+    const trimmed = lineAt(i).trim();
+    if (trimmed.endsWith('*/')) return false;
+    if (trimmed.startsWith('/*')) return true;
+  }
+  return false;
+}
+
 /** Resolve the whole instruction even when the cursor is on its first or middle line. */
 export function commentAt(
   language: string,
@@ -80,7 +89,7 @@ export function commentAt(
   const marker = slash ? '//' : '#';
   const current = lineAt(line).trimStart();
   let end = line;
-  if (current.startsWith(marker)) {
+  if (current.startsWith(marker) && (!slash || !insideBlockComment(line, lineAt))) {
     if (current.startsWith('#!')) return;
     while (end + 1 < count) {
       const next = lineAt(end + 1).trimStart();
@@ -104,12 +113,61 @@ export interface ReviewOptions {
   reference?: { language: string; text: string } | undefined;
 }
 
+/** Fit the closest source on each side, keeping UTF-8 characters intact. */
+export function nearbyContext(before: string, after: string, remaining: number) {
+  const left = Buffer.from(before);
+  const right = Buffer.from(after);
+  const rightSize = Math.min(
+    right.length,
+    Math.max(Math.floor(remaining / 3), remaining - left.length),
+  );
+  const leftSize = Math.min(left.length, remaining - rightSize);
+  let start = left.length - leftSize;
+  let end = rightSize;
+  // Clip at character boundaries even when nearby identifiers contain Unicode.
+  while (start < left.length && ((left[start] ?? 0) & 0xc0) === 0x80) start++;
+  while (end > 0 && ((right[end] ?? 0) & 0xc0) === 0x80) end--;
+  return { prefix: left.toString('utf8', start), suffix: right.toString('utf8', 0, end) };
+}
+
+function trimStandaloneTrailingTask(language: string, after: string): string {
+  const slash = slashLanguages.includes(language);
+  const lines = after.split(/\r?\n/);
+  const starts: number[] = [];
+  let offset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    starts.push(offset);
+    offset += (lines[i]?.length ?? 0) + (after[offset + (lines[i]?.length ?? 0)] === '\r' ? 2 : 1);
+  }
+  const isCommentStart = (trimmed: string) =>
+    slash
+      ? trimmed.startsWith('//') || trimmed.startsWith('/*')
+      : trimmed.startsWith('#') && !trimmed.startsWith('#!');
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = (lines[i] ?? '').trimStart();
+    if (!isCommentStart(trimmed)) continue;
+    const block = commentAt(language, i, lines.length, (k) => lines[k] ?? '');
+    if (!block) {
+      // Unclosed block comment (e.g. a trailing /* stub): stop before it.
+      if (slash && trimmed.startsWith('/*')) return after.slice(0, starts[i] ?? 0);
+      continue;
+    }
+    const nextLine = lines[block.end + 1];
+    // Stop before a standalone comment not immediately documenting following code.
+    if (nextLine === undefined || !nextLine.trim() || isCommentStart(nextLine.trimStart())) {
+      return after.slice(0, starts[i] ?? 0);
+    }
+    i = block.end;
+  }
+  return after;
+}
+
 export function completionMessages(
   language: string,
   instruction: string,
   before: string,
   after: string,
-  inputBudget: number,
+  byteBudget: number,
   review?: ReviewOptions,
 ): ChatMessage[] | undefined {
   const reference = review?.reference;
@@ -135,7 +193,7 @@ export function completionMessages(
   };
   // Reserve the entire task and any user-selected example before fitting nearby code.
   const messageOverhead = 48;
-  const remaining = inputBudget - Buffer.byteLength(system + prompt('', 'x')) - messageOverhead;
+  const remaining = byteBudget - Buffer.byteLength(system + prompt('', 'x')) - messageOverhead;
   if (remaining < 0) return;
   // Skip preceding comment-only tasks for which there is no implementation yet.
   const lines = before.split(/\r?\n/);
@@ -148,27 +206,16 @@ export function completionMessages(
     if (!prior) break;
     boundary = prior.start;
   }
-  const left = Buffer.from(
-    boundary === lines.length ? before : lines.slice(0, boundary).join('\n'),
+  const preceding = boundary === lines.length ? before : lines.slice(0, boundary).join('\n');
+  // Keep following source and its attached comments, but stop before an unrelated standalone task.
+  const { prefix, suffix } = nearbyContext(
+    preceding,
+    trimStandaloneTrailingTask(language, after),
+    remaining,
   );
-  // A separate comment below the insertion point can describe an entirely different task.
-  // Keep intervening source code, but stop before showing the model the next instruction.
-  const nextComment = slashLanguages.includes(language) ? /^[ \t]*(?:\/\/|\/\*)/m : /^[ \t]*#/m;
-  const next = after.search(nextComment);
-  const right = Buffer.from(next < 0 ? after : after.slice(0, next));
-  const rightSize = Math.min(
-    right.length,
-    Math.max(Math.floor(remaining / 3), remaining - left.length),
-  );
-  const leftSize = Math.min(left.length, remaining - rightSize);
-  let start = left.length - leftSize;
-  let end = rightSize;
-  // Clip at character boundaries even when nearby identifiers contain Unicode.
-  while (start < left.length && ((left[start] ?? 0) & 0xc0) === 0x80) start++;
-  while (end > 0 && ((right[end] ?? 0) & 0xc0) === 0x80) end--;
   return [
     { role: 'system', content: system },
-    { role: 'user', content: prompt(left.toString('utf8', start), right.toString('utf8', 0, end)) },
+    { role: 'user', content: prompt(prefix, suffix) },
   ];
 }
 

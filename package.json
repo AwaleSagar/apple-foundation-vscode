@@ -186,6 +186,24 @@
         "command": "appleFoundation.clearReference",
         "title": "%command.clearReference.title%",
         "category": "%category%"
+      },
+      {
+        "command": "appleFoundation.editInline",
+        "title": "%command.editInline.title%",
+        "category": "%category%",
+        "enablement": "editorIsOpen && !activeEditorIsReadonly && !editorReadonly && !editorHasMultipleSelections && !isInDiffEditor && !commentEditorFocused"
+      },
+      {
+        "command": "appleFoundation.previewInlineEdit",
+        "title": "%command.previewInlineEdit.title%",
+        "category": "%category%",
+        "enablement": "!commentIsEmpty"
+      },
+      {
+        "command": "appleFoundation.cancelInlineEdit",
+        "title": "%command.cancelInlineEdit.title%",
+        "category": "%category%",
+        "icon": "$(close)"
       }
     ],
     "walkthroughs": [
@@ -240,8 +258,16 @@
         "appleFoundation.model.maxContextTokens": {
           "type": "number",
           "default": 0,
-          "minimum": 0,
-          "maximum": 32768,
+          "anyOf": [
+            {
+              "const": 0
+            },
+            {
+              "type": "number",
+              "minimum": 512,
+              "maximum": 32768
+            }
+          ],
           "markdownDescription": "%config.maxContextTokens.description%"
         },
         "appleFoundation.inlineCompletions.enabled": {
@@ -272,6 +298,11 @@
     },
     "menus": {
       "editor/context": [
+        {
+          "command": "appleFoundation.editInline",
+          "when": "!editorReadonly && !editorHasMultipleSelections && !isInDiffEditor && !commentEditorFocused",
+          "group": "appleLocal@0"
+        },
         {
           "command": "appleFoundation.explainSelection",
           "when": "editorHasSelection",
@@ -332,9 +363,57 @@
         {
           "command": "appleFoundation.discardImplementation",
           "when": "isInDiffEditor && resourceScheme == apple-foundation-proposal"
+        },
+        {
+          "command": "appleFoundation.previewInlineEdit",
+          "when": "false"
+        },
+        {
+          "command": "appleFoundation.cancelInlineEdit",
+          "when": "false"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "appleFoundation.cancelInlineEdit",
+          "when": "commentController == appleFoundation.inlineEdit",
+          "group": "navigation"
+        }
+      ],
+      "comments/comment/context": [
+        {
+          "command": "appleFoundation.previewInlineEdit",
+          "when": "commentController == appleFoundation.inlineEdit",
+          "group": "inline"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "appleFoundation.editInline",
+        "key": "ctrl+k shift+e",
+        "mac": "cmd+k shift+e",
+        "when": "editorTextFocus && !editorReadonly && !editorHasMultipleSelections && !isInDiffEditor && !commentEditorFocused"
+      },
+      {
+        "command": "appleFoundation.openChat",
+        "key": "ctrl+k shift+l",
+        "mac": "cmd+k shift+l",
+        "when": "editorTextFocus && !commentEditorFocused"
+      },
+      {
+        "command": "appleFoundation.applyImplementation",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && isInDiffEditor && appleFoundation.proposalDiffActive && !findWidgetVisible && !inReferenceSearchEditor"
+      },
+      {
+        "command": "appleFoundation.discardImplementation",
+        "key": "escape",
+        "mac": "escape",
+        "when": "editorTextFocus && isInDiffEditor && appleFoundation.proposalDiffActive && !findWidgetVisible && !inReferenceSearchEditor && !editorHasSelection && !suggestWidgetVisible"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "pnpm run build",

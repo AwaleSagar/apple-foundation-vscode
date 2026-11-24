@@ -8,6 +8,22 @@ An empty chat offers **Explain selection**, **Document selection**, and **Draft 
 
 The sidebar keeps conversation history in memory for the current window. Choose **New Local Chat** (**+**) in the view toolbar to clear the conversation and draft. Reloading the window also clears them. The toolbar’s **…** menu includes **Show Status** and **Show Logs**.
 
+## Edit inline
+
+Select the text to replace, or place one cursor at the insertion point. Run **Local Chat: Edit Inline** from the Command Palette, the editor context menu, or the shortcut below. Type the change you want into the prompt beneath the code. The local model receives your instruction, the selection, and nearby text from that document.
+
+| Action | Mac shortcut | Where it works |
+| --- | --- | --- |
+| Edit inline | ⌘K, then ⇧E | Writable text editor with one selection or cursor |
+| Open Local Chat | ⌘K, then ⇧L | Text editor |
+| Preview the edit | ⌘Enter | Inline prompt |
+| Apply the proposal | ⌘Enter | Review diff |
+| Discard the proposal | Escape | Review diff, with no selection |
+
+**Preview Edit** opens a diff. **Apply Proposed Edit** makes a single undoable change. **Discard Proposed Edit** closes the diff. If the source changes after you open the prompt, start a new edit against the updated text. The same review shortcuts work for **Implement This Comment**.
+
+When **Comments: Visible** is off, VS Code opens an input box for the instruction. Press **Enter** there to preview. To change a shortcut, open **Keyboard Shortcuts** and search for the command under **Local Chat**.
+
 ## Complete code from a comment
 
 Inside a function such as `def unique_names(names):`, write an indented comment like `# Return the unique names in their original order` and press **Enter**. Pause on the blank line to see a suggestion. **Tab** accepts it and **Escape** dismisses it. To request it again, run **Trigger Inline Suggestion** on that line.
@@ -20,9 +36,9 @@ Suggestions are enabled by default. Turn off `appleFoundation.inlineCompletions.
 
 Put the cursor anywhere inside a standalone comment block and choose **Implement This Comment** from the editor lightbulb or run **Local Chat: Implement This Comment** from the Command Palette. This action also works when automatic inline suggestions are disabled. Separate tasks with a blank line so you can generate and review them individually.
 
-The diff shows the proposed insertion beneath the chosen comment. **Apply Implementation** (check mark) inserts it as a single undoable edit. **Discard Implementation** (close icon) closes the proposal. Editing the source after generation invalidates the proposal. Run the action again against the updated text.
+The diff shows the proposed insertion beneath the chosen comment. **Apply Proposed Edit** (check mark) inserts it as a single undoable edit. **Discard Proposed Edit** (close icon) closes the proposal. Editing the source after generation invalidates the proposal. Run the action again against the updated text.
 
-To give the model an example, select a snippet in any text editor and choose **Local Chat: Use Selection as Implementation Reference**. Its filename appears in the status bar. The next **Implement This Comment** request takes that snapshot, up to 4 KiB, as a local example. Click the status item to clear it, or select another example to replace it. The reference stays in window memory and is consumed when generation starts, including requests you cancel. Inline suggestions and sidebar chats use their usual context.
+To give the model an example, select a snippet in any text editor and choose **Local Chat: Use Selection as Implementation Reference**. Its filename appears in the status bar. The next **Implement This Comment** request takes that snapshot, up to 4 KiB, as a local example. Click the status item to clear it, or select another example to replace it. The reference stays in window memory and is consumed once generation starts (pre-flight failures such as a read-only file or unavailable model keep it intact). Inline suggestions and sidebar chats use their usual context.
 
 ## Use VS Code Chat
 

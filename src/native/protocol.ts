@@ -53,18 +53,33 @@ function encodeGeneration(
   let size = 14;
   for (const message of messages) size += messageSize(message);
 
-  // Even a conversation larger than a single frame can still have a useful recent suffix.
+  // Even a conversation larger than a single frame or remaining budget can keep a recent suffix.
+  const maxFrameBody = Math.min(MAX_BODY_BYTES, availableBytes - 4);
   const first = messages[0]?.role === 'system' ? 1 : 0;
   let start = first;
-  while (size > MAX_BODY_BYTES || messages.length - start + first > MAX_MESSAGES) {
-    const user = messages[start];
-    const assistant = messages[start + 1];
-    if (start + 2 >= messages.length || user?.role !== 'user' || assistant?.role !== 'assistant')
-      throw new Error(
-        'Request too large for the local helper. Shorten the text or start a new chat.',
-      );
-    size -= messageSize(user) + messageSize(assistant);
-    start += 2;
+  while (size > maxFrameBody || messages.length - start + first > MAX_MESSAGES) {
+    if (start + 1 >= messages.length) {
+      if (size > MAX_BODY_BYTES || messages.length - start + first > MAX_MESSAGES)
+        throw new Error(
+          'Request too large for the local helper. Shorten the text or start a new chat.',
+        );
+      throw new Error(HELPER_BUSY);
+    }
+    const current = messages[start];
+    const next = messages[start + 1];
+    if (current?.role === 'user' && next?.role === 'assistant' && start + 2 < messages.length) {
+      size -= messageSize(current) + messageSize(next);
+      start += 2;
+    } else if (current && (current.role !== 'user' || next?.role === 'user')) {
+      size -= messageSize(current);
+      start += 1;
+    } else {
+      if (size > MAX_BODY_BYTES || messages.length - start + first > MAX_MESSAGES)
+        throw new Error(
+          'Request too large for the local helper. Shorten the text or start a new chat.',
+        );
+      throw new Error(HELPER_BUSY);
+    }
   }
   if (start > first) messages = [...messages.slice(0, first), ...messages.slice(start)];
   const frame = allocateFrame(id, operations.generate, size, availableBytes);

@@ -9,7 +9,9 @@ export async function turnContext(
 ): Promise<TurnContext> {
   if (command === 'commit') return { command, prompt, diff: await getStagedDiff(source) };
   const editor = vscode.window.activeTextEditor;
-  if (!editor || editor.selection.isEmpty) {
+  const selection =
+    editor && !editor.selection.isEmpty ? editor.document.getText(editor.selection) : undefined;
+  if (!editor || selection === undefined || selection.trim() === '') {
     if ((command === 'explain' || command === 'doc') && !prompt.trim())
       throw new Error('Select code in an editor first.');
     return { command, prompt };
@@ -17,7 +19,7 @@ export async function turnContext(
   return {
     command,
     prompt,
-    selection: editor.document.getText(editor.selection),
+    selection,
     languageId: editor.document.languageId,
     fileName: editor.document.uri.path.split('/').pop(),
   };

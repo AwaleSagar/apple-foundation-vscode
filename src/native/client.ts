@@ -1,13 +1,17 @@
 import type * as vscode from 'vscode';
 import { checkHost, currentHostInfo } from '../core/availability';
-import { Connection } from './connection';
+import { Connection, type HelperLogger } from './connection';
 import { type ChatMessage, invalidResponse } from './protocol';
 
+export type { HelperLogger } from './connection';
 export type { ChatMessage } from './protocol';
 
 export class NativeClient {
   private connection?: Connection | undefined;
-  constructor(private readonly executable: string) {}
+  constructor(
+    private readonly executable: string,
+    private readonly logger?: HelperLogger,
+  ) {}
 
   get generating() {
     return this.connection?.generating ?? false;
@@ -18,9 +22,13 @@ export class NativeClient {
     if (!this.connection) {
       const host = checkHost(currentHostInfo());
       if (!host.available) throw new Error(host.reason);
-      this.connection = new Connection(this.executable, () => {
-        this.connection = undefined;
-      });
+      this.connection = new Connection(
+        this.executable,
+        () => {
+          this.connection = undefined;
+        },
+        this.logger,
+      );
     }
     return this.connection;
   }

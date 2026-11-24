@@ -31,11 +31,19 @@ func prepareInput(_ input: [Message], model: SystemLanguageModel, budget: Int) a
         throw InputError("A user message is required.")
     }
     let first = messages.first?.role == .system ? 1 : 0
-    var end = first
-    while end + 2 < messages.count, messages[end].role == .user, messages[end + 1].role == .assistant {
-        end += 2
+    let lastIndex = messages.count - 1
+    var starts: [Int] = []
+    var cursor = first
+    while cursor < lastIndex {
+        starts.append(cursor)
+        if messages[cursor].role == .user, cursor + 1 < lastIndex, messages[cursor + 1].role == .assistant {
+            cursor += 2
+        } else {
+            cursor += 1
+        }
     }
-    let pairs = (end - first) / 2
+    starts.append(lastIndex)
+    let units = starts.count - 1
     let instructions = first == 1 ? messages[0].entry : nil
     func entries(start: Int) -> [Transcript.Entry] {
         var result: [Transcript.Entry] = []
@@ -49,18 +57,20 @@ func prepareInput(_ input: [Message], model: SystemLanguageModel, budget: Int) a
     // Starting near the recent end avoids materializing a huge discarded prefix.
     func cost(_ message: Message) -> Int { message.content.utf8.count + 12 }
     let framing = 8 + (first == 1 ? cost(messages[0]) : 0)
-    var bytes = messages[end...].reduce(framing) { $0 + cost($1) }
-    var start = end
-    while start > first {
-        bytes += cost(messages[start - 2]) + cost(messages[start - 1])
+    var bytes = framing + cost(messages[lastIndex])
+    var keptIndex = units
+    while keptIndex > 0 {
+        let unitStart = starts[keptIndex - 1]
+        let unitEnd = starts[keptIndex]
+        for index in unitStart ..< unitEnd { bytes += cost(messages[index]) }
         if bytes > budget * 4 { break }
-        start -= 2
+        keptIndex -= 1
     }
 
     var best: [Transcript.Entry] = []
     func fits(keeping count: Int) async throws -> Bool {
         try Task.checkCancellation()
-        let start = end - 2 * count
+        let start = starts[units - count]
         if #available(macOS 26.4, *) {
             let candidate = entries(start: start)
             guard try await model.tokenCount(for: candidate) <= budget else { return false }
@@ -77,13 +87,13 @@ func prepareInput(_ input: [Message], model: SystemLanguageModel, budget: Int) a
 
     // Grow a fitting suffix exponentially, then bisect the first failing interval.
     var fitting = -1
-    var tooLarge = pairs + 1
-    var probe = (end - start) / 2
+    var tooLarge = units + 1
+    var probe = units - keptIndex
     while tooLarge - fitting > 1 {
         if try await fits(keeping: probe) {
             fitting = probe
-            if tooLarge == pairs + 1 {
-                probe = min(pairs, max(1, probe * 2))
+            if tooLarge == units + 1 {
+                probe = min(units, max(1, probe * 2))
                 continue
             }
         } else {
@@ -94,6 +104,6 @@ func prepareInput(_ input: [Message], model: SystemLanguageModel, budget: Int) a
     guard fitting >= 0 else {
         throw InputError("This request exceeds the input budget. Shorten the selection, diff, or message.")
     }
-    if best.isEmpty { best = entries(start: end - 2 * fitting) }
-    return ModelInput(transcript: Transcript(entries: best.dropLast()), prompt: prompt.content, trimmed: fitting < pairs)
+    if best.isEmpty { best = entries(start: starts[units - fitting]) }
+    return ModelInput(transcript: Transcript(entries: best.dropLast()), prompt: prompt.content, trimmed: fitting < units)
 }
