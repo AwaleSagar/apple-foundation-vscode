@@ -29,7 +29,10 @@ async function debounce(token: vscode.CancellationToken) {
 export class CommentCompletionProvider implements vscode.InlineCompletionItemProvider {
   private active?: vscode.CancellationTokenSource | undefined;
 
-  constructor(private readonly client: Pick<NativeClient, 'status' | 'generate' | 'generating'>) {}
+  constructor(
+    private readonly client: Pick<NativeClient, 'status' | 'generate' | 'generating'> &
+      Partial<Pick<NativeClient, 'count'>>,
+  ) {}
 
   dispose() {
     this.active?.cancel();
@@ -75,7 +78,7 @@ export class CommentCompletionProvider implements vscode.InlineCompletionItemPro
         instruction,
         current.rangeIncludingLineBreak.end,
         current.text || instruction.indent,
-        status.context,
+        { context: status.context, exact: status.exact },
         source.token,
       );
       if (stale() || !enabled(document)) return [];

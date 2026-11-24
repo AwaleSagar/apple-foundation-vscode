@@ -5,11 +5,32 @@ interface Repository {
   diff(cached: boolean): Promise<string>;
   ui?: { selected: boolean };
 }
+interface GitAPI {
+  state?: 'uninitialized' | 'initialized';
+  onDidChangeState?: vscode.Event<'uninitialized' | 'initialized'>;
+  repositories: readonly Repository[];
+  getRepository(uri: vscode.Uri): Repository | null;
+}
+
 interface Git {
-  getAPI(version: 1): {
-    repositories: readonly Repository[];
-    getRepository(uri: vscode.Uri): Repository | null;
-  };
+  getAPI(version: 1): GitAPI;
+}
+
+async function waitForGitInit(api: GitAPI, timeoutMs = 5_000): Promise<void> {
+  if (api.state !== 'uninitialized' || api.repositories.length > 0 || !api.onDidChangeState) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      listener.dispose();
+      resolve();
+    };
+    const timer = setTimeout(finish, timeoutMs);
+    const listener = api.onDidChangeState?.((state) => {
+      if (state === 'initialized') finish();
+    }) ?? { dispose: () => undefined };
+  });
 }
 
 export async function getStagedDiff(source?: {
@@ -18,6 +39,7 @@ export async function getStagedDiff(source?: {
   const extension = vscode.extensions.getExtension<Git>('vscode.git');
   if (!extension) throw new Error('Enable the built-in Git extension to draft a commit.');
   const api = (await extension.activate()).getAPI(1);
+  await waitForGitInit(api);
   const active = vscode.window.activeTextEditor?.document.uri;
   const selected = api.repositories.filter((repo) => repo.ui?.selected);
   let repo = source?.rootUri

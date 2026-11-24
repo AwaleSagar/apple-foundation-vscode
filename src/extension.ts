@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { registerChatParticipant } from './chat/participant';
+import { registerInlineEditor } from './inline/edit';
+import { ProposalReview } from './inline/proposal';
 import { registerCommentCompletions } from './inline/provider';
 import { registerCommentReviews } from './inline/review';
 import { NativeClient } from './native/client';
@@ -7,9 +9,11 @@ import { AppleFoundationChatProvider } from './providers/chatProvider';
 import { LocalChat } from './ui/localChat';
 
 export function activate(context: vscode.ExtensionContext) {
-  const client = new NativeClient(context.asAbsolutePath('dist/apple-local-helper'));
-  const chat = new LocalChat(client, context.extensionUri);
   const logs = vscode.window.createOutputChannel('Local Chat', { log: true });
+  const client = new NativeClient(context.asAbsolutePath('dist/apple-local-helper'), logs);
+  const review = new ProposalReview(client);
+  const chat = new LocalChat(client, context.extensionUri);
+  const provider = new AppleFoundationChatProvider(client);
   const command = (id: string, handler: (...args: never[]) => unknown) =>
     vscode.commands.registerCommand('appleFoundation.' + id, handler);
   const status = async () => {
@@ -60,12 +64,12 @@ export function activate(context: vscode.ExtensionContext) {
       const choice = await vscode.window.showQuickPick(choices);
       if (choice) await vscode.commands.executeCommand('appleFoundation.' + choice.id);
     }),
-    vscode.lm.registerLanguageModelChatProvider(
-      'apple-foundation',
-      new AppleFoundationChatProvider(client),
-    ),
+    provider,
+    vscode.lm.registerLanguageModelChatProvider('apple-foundation', provider),
     registerChatParticipant(client),
     registerCommentCompletions(client),
-    registerCommentReviews(client),
+    review,
+    registerCommentReviews(client, review),
+    registerInlineEditor(client, review),
   );
 }

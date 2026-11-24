@@ -25,6 +25,15 @@ export function toMessages(
     }
     result.push({ role: toRole(message.role), content: text });
   }
+  // VS Code's stable LM API has no System role, so multi-turn callers send
+  // system instructions as a leading User message before the first User turn.
+  if (
+    result[0]?.role === 'user' &&
+    result[1]?.role === 'user' &&
+    result.some((message) => message.role === 'assistant')
+  ) {
+    result[0] = { role: 'system', content: result[0].content };
+  }
   return result;
 }
 

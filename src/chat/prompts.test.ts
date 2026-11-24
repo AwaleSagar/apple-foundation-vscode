@@ -15,6 +15,11 @@ describe('fenceBlock', () => {
   it('omits the language when none is given', () => {
     expect(fenceBlock('Diff', 'a', undefined)).toBe('Diff:\n```\na\n```');
   });
+
+  it('uses a longer fence when the body contains triple backticks', () => {
+    const body = '```sh\npnpm test\n```';
+    expect(fenceBlock('Diff', body, 'diff')).toBe(`Diff:\n\`\`\`\`diff\n${body}\n\`\`\`\``);
+  });
 });
 
 describe('buildMessages', () => {

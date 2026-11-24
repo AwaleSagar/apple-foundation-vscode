@@ -29,7 +29,12 @@ const BASE_RULES =
 /** Fence a block of untrusted content so the model treats it as data, not instructions. */
 export function fenceBlock(label: string, body: string, languageId?: string): string {
   const lang = languageId ?? '';
-  return `${label}:\n\`\`\`${lang}\n${body}\n\`\`\``;
+  let maxRun = 0;
+  for (const match of body.matchAll(/`+/g)) {
+    if (match[0].length > maxRun) maxRun = match[0].length;
+  }
+  const fence = '`'.repeat(Math.max(3, maxRun + 1));
+  return `${label}:\n${fence}${lang}\n${body}\n${fence}`;
 }
 
 function explainMessages(ctx: TurnContext): ChatMessage[] {
@@ -50,15 +55,13 @@ function explainMessages(ctx: TurnContext): ChatMessage[] {
 function docMessages(ctx: TurnContext): ChatMessage[] {
   const system =
     ctx.languageId === 'swift'
-      ? 'Summarize what the Swift function returns in a single documentation comment. Use the form "/// Returns …".'
-      : 'Write a documentation comment in the language of the selected code. Return only the comment, ready to paste immediately above the declaration.';
+      ? 'Write a single-line Swift documentation comment starting with "/// " for the selected declaration. If it is a function that returns a value, summarize what it returns (e.g. "/// Returns ..."). If it is a void function, type, or property, summarize what it does or represents. Return only the /// comment line without code fences or repeating the declaration.'
+      : ctx.languageId === 'python'
+        ? 'Write a concise Python docstring wrapped in triple quotes (""") for the selected code. Return only the docstring itself, without code fences and without repeating the def, class, or function body.'
+        : 'Write a documentation comment in the language of the selected code. Return only the comment itself, ready to paste immediately above the declaration, without code fences and without repeating the code or signature.';
   const parts: string[] = [];
   if (ctx.selection !== undefined && ctx.selection.trim() !== '') {
-    parts.push(
-      ctx.languageId === 'swift'
-        ? ctx.selection
-        : fenceBlock('Code to document', ctx.selection, ctx.languageId),
-    );
+    parts.push(fenceBlock('Code to document', ctx.selection, ctx.languageId));
   }
   if (ctx.prompt.trim() !== '') {
     parts.push(ctx.prompt.trim());

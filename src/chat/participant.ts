@@ -12,14 +12,30 @@ export function registerChatParticipant(client: NativeClient) {
     async (request, context, stream, token) => {
       try {
         const turn = await turnContext(request.command, request.prompt);
+        if (!request.command && !turn.prompt.trim() && !turn.selection?.trim()) {
+          return {
+            errorDetails: { message: 'Enter a message or select code in an editor first.' },
+          };
+        }
         const history = request.command ? [] : historyFromChatContext(context);
-        await client.generate(
-          prependHistory(buildMessages(turn), history),
-          readLimits(),
-          token,
-          (text) => stream.markdown(text),
-          () => stream.progress('Trimmed earlier turns to fit this Mac’s context window.'),
-        );
+        let docFenced = false;
+        try {
+          await client.generate(
+            prependHistory(buildMessages(turn), history),
+            readLimits(),
+            token,
+            (text) => {
+              if (request.command === 'doc' && !docFenced) {
+                docFenced = true;
+                stream.markdown(`\`\`\`\`${turn.languageId ?? ''}\n`);
+              }
+              stream.markdown(text);
+            },
+            () => stream.progress('Trimmed earlier turns to fit this Mac’s context window.'),
+          );
+        } finally {
+          if (docFenced) stream.markdown('\n````');
+        }
         return { metadata: { command: request.command } };
       } catch (error) {
         if (token.isCancellationRequested) return {};

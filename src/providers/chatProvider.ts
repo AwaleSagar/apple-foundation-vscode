@@ -3,8 +3,25 @@ import { deviceBudget, readLimits } from '../core/config';
 import type { NativeClient } from '../native/client';
 import { flattenForTokenCount, toMessages } from './messages';
 
-export class AppleFoundationChatProvider implements vscode.LanguageModelChatProvider {
-  constructor(private readonly client: NativeClient) {}
+export class AppleFoundationChatProvider
+  implements vscode.LanguageModelChatProvider, vscode.Disposable
+{
+  private readonly infoChanged = new vscode.EventEmitter<void>();
+  private readonly configListener: vscode.Disposable;
+  readonly onDidChangeLanguageModelChatInformation = this.infoChanged.event;
+
+  constructor(private readonly client: NativeClient) {
+    this.configListener = vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('appleFoundation.model')) {
+        this.infoChanged.fire();
+      }
+    });
+  }
+
+  dispose() {
+    this.configListener.dispose();
+    this.infoChanged.dispose();
+  }
 
   async provideLanguageModelChatInformation(
     options: { silent: boolean },
@@ -26,7 +43,9 @@ export class AppleFoundationChatProvider implements vscode.LanguageModelChatProv
       ];
     } catch (error) {
       if (!options.silent && !token.isCancellationRequested)
-        void vscode.window.showWarningMessage(String(error));
+        void vscode.window.showWarningMessage(
+          error instanceof Error ? error.message : String(error),
+        );
       return [];
     }
   }

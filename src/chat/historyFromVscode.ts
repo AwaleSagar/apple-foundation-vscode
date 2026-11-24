@@ -15,9 +15,16 @@ export function historyFromChatContext(
   const turns: HistoryTurn[] = [];
   for (const item of chatContext.history) {
     if (isRequestTurn(item)) {
-      const prompt = item.prompt?.trim() ?? '';
-      if (prompt !== '') {
-        turns.push({ role: 'user', content: prompt });
+      const command =
+        'command' in item && typeof item.command === 'string' ? item.command.trim() : '';
+      const rawPrompt = item.prompt?.trim() ?? '';
+      const content = rawPrompt || (command ? `/${command}` : '');
+      if (content !== '') {
+        if (turns.at(-1)?.role === 'user') {
+          turns[turns.length - 1] = { role: 'user', content };
+        } else {
+          turns.push({ role: 'user', content });
+        }
       }
       continue;
     }
@@ -25,6 +32,8 @@ export function historyFromChatContext(
       const text = flattenResponseTurn(item);
       if (text !== '') {
         turns.push({ role: 'assistant', content: text });
+      } else if (turns.at(-1)?.role === 'user') {
+        turns.pop();
       }
     }
   }

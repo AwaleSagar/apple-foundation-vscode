@@ -10,6 +10,7 @@
 /// <reference types="mocha" />
 import './inline';
 import './commentReview';
+import './inlineEdit';
 import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 import { NativeClient } from '../../native/client';
@@ -17,6 +18,9 @@ import { NativeClient } from '../../native/client';
 const EXTENSION_ID = 'sagarawale.apple-foundation-vscode';
 
 const CONTRIBUTED_COMMANDS = [
+  'appleFoundation.editInline',
+  'appleFoundation.previewInlineEdit',
+  'appleFoundation.cancelInlineEdit',
   'appleFoundation.useReference',
   'appleFoundation.clearReference',
   'appleFoundation.implementComment',
@@ -98,6 +102,7 @@ if (process.env['APPLE_LOCAL_PACKAGE_TEST']) {
         await run('openChat', 'What word did I ask you to remember? Reply with only that word.'),
         /^maple[.!]?$/i,
       );
+      await run('newChat');
       const long = run('openChat', 'List the integers from 1 to 500 in words.');
       await new Promise((resolve) => setTimeout(resolve, 350));
       await run('stop');
@@ -152,6 +157,7 @@ if (process.env['APPLE_LOCAL_PACKAGE_TEST']) {
       const git = vscode.extensions.getExtension('vscode.git');
       assert.ok(git);
       const api = (await git.activate()).getAPI(1);
+      if (!api.getRepository(folder.uri)) await api.openRepository(folder.uri);
       const deadline = Date.now() + 15000;
       while (!api.getRepository(folder.uri) && Date.now() < deadline)
         await new Promise((resolve) => setTimeout(resolve, 100));

@@ -35,4 +35,15 @@ describe('toMessages', () => {
     ]);
     expect(result).toEqual([{ role: 'user', content: 'kept' }]);
   });
+
+  it('promotes a leading user instruction to system in multi-turn conversations', () => {
+    const result = toMessages([
+      message(LanguageModelChatMessageRole.User, [new LanguageModelTextPart('System rules')]),
+      message(LanguageModelChatMessageRole.User, [new LanguageModelTextPart('Turn 1')]),
+      message(LanguageModelChatMessageRole.Assistant, [new LanguageModelTextPart('Reply 1')]),
+      message(LanguageModelChatMessageRole.User, [new LanguageModelTextPart('Turn 2')]),
+    ]);
+    expect(result[0]).toEqual({ role: 'system', content: 'System rules' });
+    expect(result[1]).toEqual({ role: 'user', content: 'Turn 1' });
+  });
 });

@@ -6,13 +6,25 @@ const kind = 'refactor.rewrite.appleFoundation.implementComment';
 const cmd = (suffix: string) => vscode.commands.executeCommand(`appleFoundation.${suffix}`);
 async function actions(document: vscode.TextDocument, start: number, end = start) {
   const range = new vscode.Range(start, 0, end, document.lineAt(end).range.end.character);
-  const all = await vscode.commands.executeCommand<vscode.CodeAction[]>(
-    'vscode.executeCodeActionProvider',
-    document.uri,
-    range,
-    kind,
-  );
-  return all.filter((action) => action.command?.command === implement);
+  try {
+    const all = await vscode.commands.executeCommand<vscode.CodeAction[]>(
+      'vscode.executeCodeActionProvider',
+      document.uri,
+      range,
+      kind,
+    );
+    return all.filter((action) => action.command?.command === implement);
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== 'Canceled') throw error;
+    // VS Code can cancel provider discovery while activating the renderer.
+    const all = await vscode.commands.executeCommand<vscode.CodeAction[]>(
+      'vscode.executeCodeActionProvider',
+      document.uri,
+      range,
+      kind,
+    );
+    return all.filter((action) => action.command?.command === implement);
+  }
 }
 
 suite('comment implementation review', () => {
