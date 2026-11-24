@@ -1,14 +1,22 @@
 // Run the same host suite against an installed VSIX in a new, disposable profile.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join, resolve } from 'node:path';
 import { resolveCliArgsFromVSCodeExecutablePath } from '@vscode/test-electron';
 
 const [vsix, executable] = process.argv.slice(2);
 if (!vsix || !executable)
   throw new Error('Usage: node scripts/test-package.mjs <vsix> <VS Code executable>');
-const root = mkdtempSync(join(realpathSync(tmpdir()), 'apple-local-package-'));
+const root = mkdtempSync(join(realpathSync('/tmp'), 'alc-'));
 try {
   const folder = join(root, 'repo');
   const driver = join(root, 'driver');
@@ -34,7 +42,10 @@ try {
       engines: { vscode: '^1.104.0' },
     }),
   );
-  const git = (...args) => execFileSync('/usr/bin/git', args, { cwd: folder });
+  // The host may inject Git config whose values do not survive Electron's environment filtering.
+  const env = { ...process.env, APPLE_LOCAL_PACKAGE_TEST: '1' };
+  delete env.GIT_CONFIG_COUNT;
+  const git = (...args) => execFileSync('/usr/bin/git', args, { cwd: folder, env });
   git('init', '-q');
   writeFileSync(join(folder, 'config.ts'), 'const timeoutMs = 2000;\n');
   git('add', 'config.ts');
@@ -79,10 +90,16 @@ try {
       `--extensionTestsPath=${runner}`,
       folder,
     ],
-    { env: { ...process.env, APPLE_LOCAL_PACKAGE_TEST: '1' }, stdio: 'inherit', timeout: 180000 },
+    { env, stdio: 'inherit', timeout: 180000 },
   );
   if (error) throw error;
   process.exitCode = status ?? 1;
+  const logs = join(profile, 'logs');
+  if (process.exitCode && existsSync(logs)) {
+    for (const file of readdirSync(logs, { recursive: true })) {
+      if (file.endsWith('Git.log')) process.stderr.write(readFileSync(join(logs, file), 'utf8'));
+    }
+  }
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
