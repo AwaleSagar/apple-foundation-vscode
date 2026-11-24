@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+### Minor Changes
+
+- Edit selected text or insert at the cursor with an on-device instruction. Use editor shortcuts to open the inline prompt or Local Chat and to apply or discard a reviewed proposal.
+
 ## 0.3.0
 
 ### Minor Changes
