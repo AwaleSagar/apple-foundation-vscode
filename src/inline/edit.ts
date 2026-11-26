@@ -4,6 +4,20 @@ import { generateInlineEdit } from './editGeneration';
 import { type EditTarget, type ProposalReview, proposalScheme } from './proposal';
 
 const controllerId = 'appleFoundation.inlineEdit';
+
+function commentText(comment: vscode.Comment | undefined): string {
+  const rawBody = comment?.body;
+  return (typeof rawBody === 'string' ? rawBody : (rawBody?.value ?? '')).trim();
+}
+
+function isEmptyDraft(thread: vscode.CommentThread): boolean {
+  return thread.comments.every((comment) => commentText(comment) === '');
+}
+
+function isStaleTarget(target: EditTarget): boolean {
+  return target.document.isClosed || target.document.version !== target.version;
+}
+
 export function registerInlineEditor(
   client: Pick<NativeClient, 'generate' | 'count'>,
   review: ProposalReview,
@@ -16,6 +30,11 @@ export function registerInlineEditor(
   function close(document: vscode.TextDocument) {
     drafts.get(document)?.thread.dispose();
     drafts.delete(document);
+  }
+  function closeEmptyDrafts() {
+    for (const [document, draft] of Array.from(drafts.entries())) {
+      if (isEmptyDraft(draft.thread)) close(document);
+    }
   }
   async function start() {
     const editor = vscode.window.activeTextEditor;
@@ -62,6 +81,23 @@ export function registerInlineEditor(
   return vscode.Disposable.from(
     controller,
     vscode.workspace.onDidCloseTextDocument(close),
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      for (const [document, draft] of Array.from(drafts.entries())) {
+        if (document.isClosed) {
+          close(document);
+          continue;
+        }
+        if (
+          editor &&
+          editor.document.uri.scheme !== 'comment' &&
+          editor.document !== document &&
+          isStaleTarget(draft.target) &&
+          isEmptyDraft(draft.thread)
+        ) {
+          close(document);
+        }
+      }
+    }),
     vscode.commands.registerCommand('appleFoundation.editInline', start),
     vscode.commands.registerCommand(
       'appleFoundation.previewInlineEdit',
@@ -69,13 +105,9 @@ export function registerInlineEditor(
         const draft = Array.from(drafts.values()).find(
           ({ thread }) => thread.comments[0] === prompt,
         );
-        const rawBody = prompt?.body;
-        const text = (typeof rawBody === 'string' ? rawBody : (rawBody?.value ?? '')).trim();
+        const text = commentText(prompt);
         if (!draft) return;
-        if (
-          draft.target.document.isClosed ||
-          draft.target.document.version !== draft.target.version
-        ) {
+        if (isStaleTarget(draft.target)) {
           void vscode.window.showWarningMessage(
             'The source changed. Copy your prompt or start a new inline edit.',
           );
@@ -88,10 +120,26 @@ export function registerInlineEditor(
     vscode.commands.registerCommand(
       'appleFoundation.cancelInlineEdit',
       (thread?: vscode.CommentThread) => {
-        const draft = Array.from(drafts.values()).find((draft) => draft.thread === thread);
-        if (draft) close(draft.target.document);
+        if (thread) {
+          const draft = Array.from(drafts.values()).find((entry) => entry.thread === thread);
+          if (draft) {
+            close(draft.target.document);
+          } else {
+            thread.dispose();
+          }
+          return;
+        }
+        const activeDoc = vscode.window.activeTextEditor?.document;
+        if (activeDoc && drafts.has(activeDoc)) {
+          close(activeDoc);
+          return;
+        }
+        closeEmptyDrafts();
       },
     ),
-    new vscode.Disposable(() => drafts.clear()),
+    new vscode.Disposable(() => {
+      for (const draft of drafts.values()) draft.thread.dispose();
+      drafts.clear();
+    }),
   );
 }

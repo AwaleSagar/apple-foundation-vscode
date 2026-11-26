@@ -5,6 +5,8 @@ import type { NativeClient } from '../native/client';
 import type { DeviceContext } from './generation';
 
 export const proposalScheme = 'apple-foundation-proposal';
+export const EXPIRED_PROPOSAL_MESSAGE =
+  '// This proposal expired when the window reloaded. Generate a new proposal from the source file.\n';
 const proposalContextKey = 'appleFoundation.proposalDiffActive';
 
 export interface EditTarget {
@@ -27,6 +29,18 @@ function proposalUri(tab: vscode.Tab | undefined) {
     return input.modified;
 }
 
+function proposalTabUri(tab: vscode.Tab | undefined): vscode.Uri | undefined {
+  const input = tab?.input;
+  if (input instanceof vscode.TabInputTextDiff) {
+    if (input.modified.scheme === proposalScheme) return input.modified;
+    if (input.original.scheme === proposalScheme) return input.original;
+  }
+  if (input instanceof vscode.TabInputText && input.uri.scheme === proposalScheme) {
+    return input.uri;
+  }
+  return undefined;
+}
+
 function tabsFor(uri: vscode.Uri) {
   return vscode.window.tabGroups.all.flatMap((group) =>
     group.tabs.filter((tab) => proposalUri(tab)?.toString() === uri.toString()),
@@ -38,16 +52,19 @@ export class ProposalReview {
     string,
     { target: EditTarget; text: string; preview: string }
   >();
+  private readonly applying = new Set<string>();
   private readonly registrations: vscode.Disposable;
 
   constructor(private readonly client: Pick<NativeClient, 'status'>) {
     const syncContext = () => {
-      const active = Boolean(proposalUri(vscode.window.tabGroups.activeTabGroup.activeTab));
+      const uri = proposalUri(vscode.window.tabGroups.activeTabGroup.activeTab);
+      const active = uri !== undefined && this.proposals.has(uri.toString());
       void vscode.commands.executeCommand('setContext', proposalContextKey, active);
     };
     this.registrations = vscode.Disposable.from(
       vscode.workspace.registerTextDocumentContentProvider(proposalScheme, {
-        provideTextDocumentContent: (uri) => this.proposals.get(uri.toString())?.preview,
+        provideTextDocumentContent: (uri) =>
+          this.proposals.get(uri.toString())?.preview ?? EXPIRED_PROPOSAL_MESSAGE,
       }),
       vscode.commands.registerCommand('appleFoundation.applyImplementation', () => this.apply()),
       vscode.commands.registerCommand('appleFoundation.discardImplementation', () => {
@@ -63,7 +80,20 @@ export class ProposalReview {
       }),
       vscode.window.tabGroups.onDidChangeTabGroups(syncContext),
     );
+    this.closeOrphanedTabs();
     syncContext();
+  }
+
+  private closeOrphanedTabs() {
+    const orphaned = vscode.window.tabGroups.all.flatMap((group) =>
+      group.tabs.filter((tab) => {
+        const uri = proposalTabUri(tab);
+        return uri !== undefined && !this.proposals.has(uri.toString());
+      }),
+    );
+    if (orphaned.length) {
+      void Promise.resolve(vscode.window.tabGroups.close(orphaned)).catch(() => undefined);
+    }
   }
 
   async generate(
@@ -142,25 +172,33 @@ export class ProposalReview {
 
   private async apply() {
     const uri = proposalUri(vscode.window.tabGroups.activeTabGroup.activeTab);
-    const proposal = uri && this.proposals.get(uri.toString());
-    if (!uri || !proposal) return;
-    const { target, text } = proposal;
-    if (current(target)) {
-      const editor = await vscode.window.showTextDocument(target.document);
-      if (current(target) && (await editor.edit((edit) => edit.replace(target.range, text)))) {
-        await vscode.window.tabGroups.close(tabsFor(uri));
-        return true;
+    const key = uri?.toString();
+    const proposal = key ? this.proposals.get(key) : undefined;
+    if (!uri || !key || !proposal || this.applying.has(key)) return;
+    this.applying.add(key);
+    try {
+      const { target, text } = proposal;
+      if (current(target)) {
+        const editor = await vscode.window.showTextDocument(target.document);
+        if (current(target) && (await editor.edit((edit) => edit.replace(target.range, text)))) {
+          this.proposals.delete(key);
+          await vscode.window.tabGroups.close(tabsFor(uri));
+          return true;
+        }
       }
+      void vscode.window.showWarningMessage(
+        'The edit could not be applied. Check that the source is writable and generate a new proposal.',
+      );
+      return false;
+    } finally {
+      this.applying.delete(key);
     }
-    void vscode.window.showWarningMessage(
-      'The edit could not be applied. Check that the source is writable and generate a new proposal.',
-    );
-    return false;
   }
 
   dispose() {
     this.registrations.dispose();
     this.proposals.clear();
+    this.applying.clear();
     void vscode.commands.executeCommand('setContext', proposalContextKey, false);
   }
 }
