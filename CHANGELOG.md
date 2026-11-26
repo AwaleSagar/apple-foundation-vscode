@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+### Patch Changes
+
+- [`60f9bc0`](https://github.com/AwaleSagar/apple-foundation-vscode/commit/60f9bc0a8213221641e4af19db8206088b261243) Thanks [@AwaleSagar](https://github.com/AwaleSagar)! - Keep inline edit drafts when switching files, preserve partial chat replies and indented code examples, and allow supported prompts regardless of the Mac’s region. Improve helper launch diagnostics, sidebar Markdown, draft recovery, and proposal handling.
+
 ## 0.4.0
 
 ### Minor Changes
