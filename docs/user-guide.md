@@ -17,6 +17,7 @@ Select the text to replace, or place one cursor at the insertion point. Run **Lo
 | Edit inline | ⌘K, then ⇧E | Writable text editor with one selection or cursor |
 | Open Local Chat | ⌘K, then ⇧L | Text editor |
 | Preview the edit | ⌘Enter | Inline prompt |
+| Cancel the inline prompt | Escape | Inline prompt |
 | Apply the proposal | ⌘Enter | Review diff |
 | Discard the proposal | Escape | Review diff, with no selection |
 
@@ -62,6 +63,7 @@ The helper starts on demand and exits after one idle minute. Concurrent replies 
 | The model is unavailable | Run **Local Chat: Run Setup Check** for the reason. If Apple Intelligence is preparing the model, let the download finish and try again. |
 | The current request exceeds the input budget | Shorten the selection, prompt, or staged diff. Lowering the output limit also leaves more room for input. |
 | The helper exits during a reply | Retry the request or run **Local Chat: Restart Local Helper**. **Show Logs** opens the output channel with recorded status checks. |
+| macOS Gatekeeper blocks `apple-local-helper` after installing a manually downloaded `.vsix` | Manually downloaded archives carry a macOS quarantine attribute. Allow `apple-local-helper` under **System Settings → Privacy & Security**, or clear the quarantine flag with `xattr -d com.apple.quarantine ~/.vscode/extensions/sagarawale.apple-foundation-vscode-*/dist/apple-local-helper` and reload VS Code. |
 | Draft Commit Message reports no staged changes | Stage the changes you want summarized in the relevant repository, then run the action again. |
 
 ## Upgrading from 0.1

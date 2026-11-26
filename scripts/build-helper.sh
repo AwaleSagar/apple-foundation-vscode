@@ -14,4 +14,8 @@ else
   exit 1
 fi
 xcrun swiftc "$@" -parse-as-library -O -whole-module-optimization -target arm64-apple-macosx26.0 native/*.swift -o dist/apple-local-helper
-codesign --force --sign - dist/apple-local-helper
+if [ -n "${APPLE_DEVELOPER_ID:-}" ]; then
+  codesign --force --options runtime --timestamp --sign "$APPLE_DEVELOPER_ID" dist/apple-local-helper
+else
+  codesign --force --sign - --timestamp=none dist/apple-local-helper
+fi

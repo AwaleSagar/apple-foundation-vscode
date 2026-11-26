@@ -36,4 +36,5 @@ CODE_OF_CONDUCT.md
 *.vsix
 native/**
 scripts/**
+artifacts/**
 media/chat/chat.js

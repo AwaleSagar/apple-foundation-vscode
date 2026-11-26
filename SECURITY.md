@@ -19,6 +19,6 @@ confirmed issues. Credit is given in the release notes unless you prefer otherwi
 
 ## Security model
 
-The extension launches its bundled executable by absolute path and sends requests over inherited pipes. The helper selects Apple’s on-device system model. Workspace settings can cap the token budget. The extension stores conversation history in window memory and logs model status without prompts or replies.
+The extension launches its bundled executable by absolute path and sends requests over inherited pipes. The helper selects Apple’s on-device system model. Settings that control token budgets (`appleFoundation.model.maxContextTokens`, `appleFoundation.model.maxOutputTokens`) and automatic inline completions (`appleFoundation.inlineCompletions.enabled`) are marked `restricted`, so untrusted workspaces in VS Code Restricted Mode cannot override them. The extension stores conversation history in window memory and logs model status without prompts or replies.
 
-The sidebar formats model replies with a local Markdown renderer. It escapes raw HTML and disables image and link parsing. Document comments and commit subjects render as literal text. Drafting a commit reads staged changes through the built-in Git extension. Users review and apply generated text themselves.
+The sidebar formats model replies with a local Markdown renderer that escapes raw HTML and disables image and link parsing. Output streamed through the `@apple` VS Code Chat participant is also sanitized to prevent untrusted Markdown and command-URI injection. Document comments and commit subjects render as literal text. Drafting a commit reads staged changes through the built-in Git extension. Users review and apply generated text themselves.
