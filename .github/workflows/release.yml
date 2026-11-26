@@ -44,9 +44,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Package VSIX
+      - name: Sign, package and notarize the release VSIX
         if: steps.changesets.outputs.published == 'true'
-        run: pnpm run package
+        env:
+          APPLE_DEVELOPER_ID: ${{ vars.APPLE_DEVELOPER_ID }}
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
+        run: |
+          set -eu
+          umask 077
+          signing_dir=$(mktemp -d)
+          keychain="$signing_dir/release.keychain-db"
+          password=$(openssl rand -hex 32)
+          trap 'security delete-keychain "$keychain" || true; rm -rf "$signing_dir"' EXIT
+          printf '%s' "$CERTIFICATE" | base64 -D > "$signing_dir/cert.p12"
+          printf '%s' "$NOTARY_KEY" | base64 -D > "$signing_dir/notary.p8"
+          security create-keychain -p "$password" "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$signing_dir/cert.p12" -k "$keychain" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain"
+          pnpm run package:release --key "$signing_dir/notary.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER"
 
       - name: Attach VSIX to GitHub release
         if: steps.changesets.outputs.published == 'true'
@@ -66,4 +87,4 @@ jobs:
       # publisher account is provisioned. See docs/release-process.md.
       # - name: Publish to Marketplace
       #   if: steps.changesets.outputs.published == 'true'
-      #   run: pnpm exec vsce publish --no-dependencies --target darwin-arm64 -p ${{ secrets.VSCE_PAT }}
+      #   run: pnpm exec vsce publish --packagePath ./*.vsix -p ${{ secrets.VSCE_PAT }}

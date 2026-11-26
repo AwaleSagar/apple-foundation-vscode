@@ -10,10 +10,6 @@ function commentText(comment: vscode.Comment | undefined): string {
   return (typeof rawBody === 'string' ? rawBody : (rawBody?.value ?? '')).trim();
 }
 
-function isEmptyDraft(thread: vscode.CommentThread): boolean {
-  return thread.comments.every((comment) => commentText(comment) === '');
-}
-
 function isStaleTarget(target: EditTarget): boolean {
   return target.document.isClosed || target.document.version !== target.version;
 }
@@ -30,11 +26,6 @@ export function registerInlineEditor(
   function close(document: vscode.TextDocument) {
     drafts.get(document)?.thread.dispose();
     drafts.delete(document);
-  }
-  function closeEmptyDrafts() {
-    for (const [document, draft] of Array.from(drafts.entries())) {
-      if (isEmptyDraft(draft.thread)) close(document);
-    }
   }
   async function start() {
     const editor = vscode.window.activeTextEditor;
@@ -81,23 +72,6 @@ export function registerInlineEditor(
   return vscode.Disposable.from(
     controller,
     vscode.workspace.onDidCloseTextDocument(close),
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
-      for (const [document, draft] of Array.from(drafts.entries())) {
-        if (document.isClosed) {
-          close(document);
-          continue;
-        }
-        if (
-          editor &&
-          editor.document.uri.scheme !== 'comment' &&
-          editor.document !== document &&
-          isStaleTarget(draft.target) &&
-          isEmptyDraft(draft.thread)
-        ) {
-          close(document);
-        }
-      }
-    }),
     vscode.commands.registerCommand('appleFoundation.editInline', start),
     vscode.commands.registerCommand(
       'appleFoundation.previewInlineEdit',
@@ -122,19 +96,19 @@ export function registerInlineEditor(
       (thread?: vscode.CommentThread) => {
         if (thread) {
           const draft = Array.from(drafts.values()).find((entry) => entry.thread === thread);
-          if (draft) {
-            close(draft.target.document);
-          } else {
-            thread.dispose();
+          if (draft) close(draft.target.document);
+          return;
+        }
+        // Focus can be in the comment input. Its source still owns the active tab.
+        const tab = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+        if (tab instanceof vscode.TabInputText) {
+          for (const document of drafts.keys()) {
+            if (document.uri.toString() === tab.uri.toString()) close(document);
           }
-          return;
+        } else {
+          const document = vscode.window.activeTextEditor?.document;
+          if (document) close(document);
         }
-        const activeDoc = vscode.window.activeTextEditor?.document;
-        if (activeDoc && drafts.has(activeDoc)) {
-          close(activeDoc);
-          return;
-        }
-        closeEmptyDrafts();
       },
     ),
     new vscode.Disposable(() => {

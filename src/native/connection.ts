@@ -71,6 +71,7 @@ export class Connection {
   private nextId = 0;
   private idle?: NodeJS.Timeout | undefined;
   private watchdog?: NodeJS.Timeout | undefined;
+  private outputEndTimer?: NodeJS.Timeout;
   private closed = false;
 
   constructor(
@@ -90,28 +91,21 @@ export class Connection {
       this.close(error);
     };
     let receivedOutput = false;
-    let exitCode: number | null = null;
-    let exitSignal: NodeJS.Signals | null = null;
     child.on('error', (error) => failed(formatSpawnError(error)));
     child.stdin.on('error', (error) => failed(error));
     child.stderr.on('error', (error) => failed(error));
     child.stdout.on('error', (error) => failed(error));
-    child.on('exit', (code, signal) => {
-      exitCode = code;
-      exitSignal = signal;
-    });
+    // 'close' includes the exit reason and follows the last stdout data. EOF
+    // can arrive first when macOS terminates the helper during launch.
     child.on('close', (code, signal) =>
       failed(formatExitError(code, signal, receivedOutput), code !== 0 || signal !== null),
     );
-    child.stdout.on('end', () => {
-      if (exitCode !== null || exitSignal !== null) {
-        failed(
-          formatExitError(exitCode, exitSignal, receivedOutput),
-          exitCode !== 0 || exitSignal !== null,
-        );
-        return;
-      }
-      failed(new Error('The local helper closed its output. Retry the request.'));
+    child.stdout.once('end', () => {
+      if (this.closed) return;
+      this.outputEndTimer = setTimeout(
+        () => failed(new Error('The local helper closed its output. Retry the request.')),
+        1_000,
+      ).unref();
     });
     const frames = new FrameReader();
     const receive = (body: Buffer) => this.receive(body.readUInt32LE(1), decodeReply(body));
@@ -227,6 +221,7 @@ export class Connection {
   close(error = new Error('Local helper restarted. Retry the request.')) {
     if (this.closed) return;
     this.closed = true;
+    clearTimeout(this.outputEndTimer);
     clearTimeout(this.idle);
     clearTimeout(this.watchdog);
     this.onClose();

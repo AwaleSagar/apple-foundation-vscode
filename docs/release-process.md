@@ -38,30 +38,19 @@ Packages PR). No separate hotfix track; keeping one path keeps it reliable.
 
 ## Signing and notarizing public VSIX releases (macOS)
 
-Local development builds and unsigned CI dry runs ad-hoc sign `dist/apple-local-helper` (`codesign --force --sign - --timestamp=none`). For public `.vsix` releases distributed via GitHub Releases or the VS Code Marketplace, sign the helper with a Developer ID Application certificate and notarize it so macOS Gatekeeper does not block execution on quarantined downloads:
+Use `pnpm run package` for local testing. For a public release, select a Developer ID Application identity in your keychain and pass your stored notarization profile to the release command.
 
-1. Build and sign with Hardened Runtime and a secure timestamp by setting `APPLE_DEVELOPER_ID` (the certificate name or SHA-1 identity in your login keychain):
+```sh
+APPLE_DEVELOPER_ID="Developer ID Application: Your Name (TEAMID)" \
+  pnpm run package:release --keychain-profile AC_NOTARY
+```
 
-   ```sh
-   APPLE_DEVELOPER_ID="Developer ID Application: Your Name (TEAMID)" pnpm run build
-   ```
+The release command builds and signs during VSIX packaging, extracts the packaged helper, checks its bytes and Developer ID signature, and submits that executable for notarization. After Apple returns `Accepted`, the command places the verified VSIX in the project root. Upload that file to GitHub Releases or use `pnpm run publish:marketplace <path-to-verified.vsix>` for the Marketplace.
 
-2. Archive the signed binary and submit it to Apple's notarization service via `xcrun notarytool` (using a stored keychain profile created with `xcrun notarytool store-credentials`):
+The GitHub release runner imports the signing certificate into a temporary keychain. Configure the repository variable `APPLE_DEVELOPER_ID` and the following Actions secrets before merging a Version Packages PR.
 
-   ```sh
-   ditto -c -k --keepParent dist/apple-local-helper /tmp/apple-local-helper.zip
-   xcrun notarytool submit /tmp/apple-local-helper.zip --keychain-profile "AC_NOTARY" --wait
-   rm -f /tmp/apple-local-helper.zip
-   ```
-
-   Note: `xcrun stapler` only supports app bundles, disk images, and installer packages—not standalone Mach-O executables—so macOS verifies the notarization ticket online via Gatekeeper once `notarytool submit --wait` returns `Accepted`.
-
-3. Verify the signature before packaging the VSIX:
-
-   ```sh
-   codesign --verify --strict --verbose=2 dist/apple-local-helper
-   pnpm run package
-   ```
+- `APPLE_CERTIFICATE_BASE64` and `APPLE_CERTIFICATE_PASSWORD` hold the base64-encoded Developer ID Application PKCS#12 export and its password.
+- `APPLE_NOTARY_KEY_BASE64`, `APPLE_NOTARY_KEY_ID`, and `APPLE_NOTARY_ISSUER` hold the base64-encoded App Store Connect team API key (.p8), key ID, and issuer ID for notarization.
 
 ## Release checklist (maintainer)
 

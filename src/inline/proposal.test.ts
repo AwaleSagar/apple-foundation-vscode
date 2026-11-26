@@ -430,7 +430,7 @@ describe('registerInlineEditor', () => {
     review.dispose();
   });
 
-  it('closes all open empty draft threads when cancelInlineEdit has no thread and focus is in the comment editor', async () => {
+  it('cancels only the source tab’s draft when focus is in its comment input', async () => {
     const docA = createMockDocument('/workspace/a.ts');
     const docB = createMockDocument('/workspace/b.ts');
     const range = new vscodeMock.Range(0, 0, 0, 5);
@@ -466,15 +466,16 @@ describe('registerInlineEditor', () => {
       document: { uri: vscodeMock.Uri.from({ scheme: 'comment', path: '/comment-1' }) },
     } as unknown as vscode.TextEditor;
 
+    state.activeTab = { input: new vscodeMock.TabInputText(docB.uri) } as vscode.Tab;
     cancelInline?.();
-    expect(state.createdThreads[0]?.disposed).toBe(true);
+    expect(state.createdThreads[0]?.disposed).toBe(false);
     expect(state.createdThreads[1]?.disposed).toBe(true);
 
     disposable.dispose();
     review.dispose();
   });
 
-  it('cleans up drafts for closed or stale documents on active editor change without breaking comment focus', async () => {
+  it('keeps a stale unsubmitted prompt across editor changes and releases it when the source closes', async () => {
     const docA = createMockDocument('/workspace/a.ts');
     const docB = createMockDocument('/workspace/b.ts');
     const range = new vscodeMock.Range(0, 0, 0, 5);
@@ -504,10 +505,14 @@ describe('registerInlineEditor', () => {
     for (const listener of state.activeEditorListeners) listener(commentEditor);
     expect(state.createdThreads[0]?.disposed).toBe(false);
 
-    // Closing docA and switching active editor cleans up its orphaned draft.
-    docA.isClosed = true;
+    // VS Code keeps unsubmitted text in the widget while the comment body is empty.
+    docA.version++;
     const editorB = { document: docB } as unknown as vscode.TextEditor;
     for (const listener of state.activeEditorListeners) listener(editorB);
+    expect(state.createdThreads[0]?.disposed).toBe(false);
+
+    docA.isClosed = true;
+    for (const listener of state.docCloseListeners) listener(docA);
     expect(state.createdThreads[0]?.disposed).toBe(true);
 
     disposable.dispose();

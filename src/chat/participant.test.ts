@@ -204,6 +204,29 @@ describe('createMarkdownSanitizer', () => {
     expect(chunks.join('')).toBe(sanitizeParticipantMarkdown(input));
   });
 
+  it.each([
+    [
+      '    [API](README.md)\n\t![diagram](chart.png)',
+      '    [API](README.md)\n\t![diagram](chart.png)',
+    ],
+    ['Intro\n    [API](README.md)', 'Intro\n    API'],
+    ['Intro\r\r    [API](README.md)', 'Intro\n\n    [API](README.md)'],
+    ['Intro\r\n\r\n    [API](README.md)', 'Intro\r\n\r\n    [API](README.md)'],
+    ['- Item\n\n    [API](README.md)', '- Item\n\n    API'],
+    ['- Item\n\n      [API](README.md)', '- Item\n\n      [API](README.md)'],
+    [
+      'A paragraph.\n\n    [API](README.md)\n\nSee [docs](README.md)',
+      'A paragraph.\n\n    [API](README.md)\n\nSee docs',
+    ],
+  ])('handles CommonMark indentation while streaming %j', (input, expected) => {
+    const chunks: string[] = [];
+    const sanitizer = createMarkdownSanitizer((text) => chunks.push(text));
+    for (const character of input) sanitizer.push(character);
+    sanitizer.flush();
+    expect(chunks.join('')).toBe(expected);
+    expect(sanitizeParticipantMarkdown(input)).toBe(expected);
+  });
+
   it('streams completed paragraphs and fenced code lines before flush', () => {
     const chunks: string[] = [];
     const sanitizer = createMarkdownSanitizer((text) => chunks.push(text));
@@ -272,6 +295,29 @@ describe('registerChatParticipant', () => {
 
     expect(result).toEqual({ metadata: { command: undefined } });
     expect(emitted.join('')).toBe('See px and click here or `https://evil.example/a`.\n\n');
+  });
+
+  it.each(['cancel', 'error'])('retains streamed and buffered prose on %s', async (reason) => {
+    const token = { isCancellationRequested: false };
+    const emitted: string[] = [];
+    const client = {
+      generate: vi.fn(async (_messages, _limits, _token, delta) => {
+        delta('First sentence. ');
+        expect(emitted.join('')).toBe('First sentence. ');
+        delta('See [the guide](README.md).');
+        token.isCancellationRequested = reason === 'cancel';
+        throw new Error(reason);
+      }),
+    } as unknown as NativeClient;
+    registerChatParticipant(client);
+    const result = await registeredHandler?.(
+      { prompt: 'Explain this' } as vscode.ChatRequest,
+      { history: [] } as unknown as vscode.ChatContext,
+      { markdown: (text: string) => emitted.push(text) } as unknown as vscode.ChatResponseStream,
+      token as vscode.CancellationToken,
+    );
+    expect(emitted.join('')).toBe('First sentence. See the guide.');
+    expect(result).toEqual(reason === 'cancel' ? {} : { errorDetails: { message: 'error' } });
   });
 
   it('buffers /doc replies and picks a fence longer than embedded 4-backtick runs', async () => {

@@ -15,9 +15,6 @@ func reason(_ model: SystemLanguageModel) -> String? {
         @unknown default: return "Apple reports that the on-device model is unavailable (\(reason))."
         }
     }
-    if !model.supportsLocale(Locale.current) {
-        return "Apple Intelligence does not support the current macOS language or region. Switch to a supported language in System Settings > General > Language & Region."
-    }
     return nil
 }
 

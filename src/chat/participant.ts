@@ -1,3 +1,4 @@
+import MarkdownIt from 'markdown-it';
 import * as vscode from 'vscode';
 import { readLimits } from '../core/config';
 import { prependHistory } from '../core/history';
@@ -421,40 +422,29 @@ function stripReferenceDefinitions(text: string): string {
   return kept.join('');
 }
 
-/**
- * Neutralizes Markdown images (`![alt](url)`), inline links (`[text](url)`),
- * autolinks (`<https://...>`), and reference link definitions (`[id]: url`)
- * while preserving fenced code blocks, inline code spans, and readable label text.
- */
-export function sanitizeParticipantMarkdown(markdown: string): string {
-  const lines = splitLinesPreservingEndings(markdown);
+// Block classification needs the preceding list and paragraph context. Only
+// prose is rewritten. Code tokens retain their original spelling and spacing.
+const blockParser = new MarkdownIt('commonmark', { html: false }).disable('inline');
+
+function sanitizeBlock(text: string, precedingText: string, firstLine: number): string {
+  const lines = splitLinesPreservingEndings(text);
+  const prose = (start: number, end: number) =>
+    sanitizeInline(stripReferenceDefinitions(lines.slice(start, end).join('')));
+  let cursor = 0;
   let result = '';
-  let proseChunk = '';
-  let fence: FenceState | null = null;
-
-  const flushProse = () => {
-    if (!proseChunk) return;
-    result += sanitizeInline(stripReferenceDefinitions(proseChunk));
-    proseChunk = '';
-  };
-
-  for (const line of lines) {
-    if (fence !== null) {
-      result += line;
-      if (isClosingFence(line, fence)) fence = null;
-      continue;
-    }
-    const opened = matchOpeningFence(line);
-    if (opened) {
-      flushProse();
-      fence = opened;
-      result += line;
-      continue;
-    }
-    proseChunk += line;
+  for (const token of blockParser.parse(precedingText + text, {})) {
+    if (!token.map || (token.type !== 'code_block' && token.type !== 'fence')) continue;
+    const start = Math.max(0, token.map[0] - firstLine);
+    const end = Math.min(lines.length, token.map[1] - firstLine);
+    if (end <= start) continue;
+    result += prose(cursor, start) + lines.slice(start, end).join('');
+    cursor = end;
   }
-  flushProse();
-  return result;
+  return result + prose(cursor, lines.length);
+}
+
+export function sanitizeParticipantMarkdown(markdown: string): string {
+  return sanitizeBlock(markdown.replace(/\r(?!\n)/g, '\n'), '', 0);
 }
 
 /**
@@ -468,9 +458,17 @@ export function createMarkdownSanitizer(emit: (text: string) => void): MarkdownS
   let blockLines: string[] = [];
   let fence: FenceState | null = null;
 
+  let precedingText = '';
+  let firstLine = 0;
+  let emittedPrefix = 0;
+
   const flushBlock = () => {
     if (!blockLines.length) return;
-    const sanitized = sanitizeParticipantMarkdown(blockLines.join(''));
+    const text = blockLines.join('');
+    const sanitized = sanitizeBlock(text, precedingText, firstLine).slice(emittedPrefix);
+    precedingText += text;
+    firstLine += blockLines.length;
+    emittedPrefix = 0;
     blockLines = [];
     if (sanitized) emit(sanitized);
   };
@@ -481,10 +479,25 @@ export function createMarkdownSanitizer(emit: (text: string) => void): MarkdownS
       if (isClosingFence(line, fence)) fence = null;
       return;
     }
-    const opened = matchOpeningFence(line);
-    if (opened) {
+    // A fence at column zero cannot be a list continuation. Parse nested
+    // blocks with the surrounding text before emitting their contents.
+    const opened = /^[`~]/.test(line) ? matchOpeningFence(line) : null;
+    if (
+      opened &&
+      blockParser
+        .parse(precedingText + blockLines.join('') + line, {})
+        .some(
+          (token) =>
+            token.type === 'fence' &&
+            token.level === 0 &&
+            token.map?.[0] === firstLine + blockLines.length,
+        )
+    ) {
       flushBlock();
       fence = opened;
+      // A top-level fence terminates the preceding container.
+      precedingText = '';
+      firstLine = 0;
       emit(line);
       return;
     }
@@ -494,7 +507,8 @@ export function createMarkdownSanitizer(emit: (text: string) => void): MarkdownS
 
   return {
     push(chunk: string) {
-      pendingLine += chunk;
+      // Keep a trailing CR until the next chunk distinguishes CRLF from CR.
+      pendingLine = (pendingLine + chunk).replace(/\r(?!\n|$)/g, '\n');
       let nl = pendingLine.indexOf('\n');
       while (nl !== -1) {
         const line = pendingLine.slice(0, nl + 1);
@@ -502,10 +516,19 @@ export function createMarkdownSanitizer(emit: (text: string) => void): MarkdownS
         processLine(line);
         nl = pendingLine.indexOf('\n');
       }
+      // A paragraph beginning with a word cannot become a reference
+      // definition. Stream its literal prefix while Markdown syntax is pending.
+      if (!fence && !blockLines.length && /^[\p{L}\p{N}]/u.test(pendingLine)) {
+        const plain = /^[\p{L}\p{N} ,.;:'"?()-]+/u.exec(pendingLine.slice(emittedPrefix));
+        if (plain) {
+          emit(plain[0]);
+          emittedPrefix += plain[0].length;
+        }
+      }
     },
     flush() {
       if (pendingLine) {
-        const tail = pendingLine;
+        const tail = pendingLine.replace(/\r$/, '\n');
         pendingLine = '';
         processLine(tail);
       }
@@ -540,28 +563,23 @@ export function registerChatParticipant(client: NativeClient) {
           };
         }
         const history = request.command ? [] : historyFromChatContext(context);
-        if (request.command === 'doc') {
-          let reply = '';
+        let doc = '';
+        const sanitizer = createMarkdownSanitizer((text) => stream.markdown(text));
+        const isDoc = request.command === 'doc';
+        try {
           await client.generate(
             prependHistory(buildMessages(turn), history),
             readLimits(),
             token,
             (text) => {
-              reply += text;
+              if (isDoc) doc += text;
+              else sanitizer.push(text);
             },
             () => stream.progress('Trimmed earlier turns to fit this Mac’s context window.'),
           );
-          if (reply) stream.markdown(fenceCodeReply(reply, turn.languageId));
-        } else {
-          const sanitizer = createMarkdownSanitizer((text) => stream.markdown(text));
-          await client.generate(
-            prependHistory(buildMessages(turn), history),
-            readLimits(),
-            token,
-            (text) => sanitizer.push(text),
-            () => stream.progress('Trimmed earlier turns to fit this Mac’s context window.'),
-          );
-          sanitizer.flush();
+        } finally {
+          if (isDoc && doc) stream.markdown(fenceCodeReply(doc, turn.languageId));
+          else sanitizer.flush();
         }
         return { metadata: { command: request.command } };
       } catch (error) {

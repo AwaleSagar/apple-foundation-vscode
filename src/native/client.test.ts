@@ -250,7 +250,21 @@ it('surfaces Gatekeeper hints on EPERM and immediate SIGKILL and skips SIGKILL e
   const exitThenEndPending = client.status();
   killedBeforeStdoutEnd.emit('exit', null, 'SIGKILL');
   killedBeforeStdoutEnd.stdout.end();
+  killedBeforeStdoutEnd.emit('close', null, 'SIGKILL');
   await expect(exitThenEndPending).rejects.toThrow(/Gatekeeper|quarantine/);
+
+  const eofFirst = child();
+  const launch = client.status();
+  eofFirst.stdout.emit('end');
+  eofFirst.emit('exit', null, 'SIGKILL');
+  eofFirst.emit('close', null, 'SIGKILL');
+  await expect(launch).rejects.toThrow(/Gatekeeper/);
+
+  const eofOnly = child();
+  const lostOutput = client.status();
+  eofOnly.stdout.emit('end');
+  vi.advanceTimersByTime(1_000);
+  await expect(lostOutput).rejects.toThrow('closed its output');
 
   const killedLater = child({ exitCode: null, signalCode: null });
   const ok = client.status();

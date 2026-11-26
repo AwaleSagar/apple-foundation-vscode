@@ -1,19 +1,8 @@
+import MarkdownIt from 'markdown-it';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-interface MarkdownItInstance {
-  disable(rules: string[]): MarkdownItInstance;
-  render(src: string): string;
-}
-
-type MarkdownItCtor = new (
-  preset: string,
-  options: { html: boolean; linkify: boolean },
-) => MarkdownItInstance;
-
-async function createHardenedMarkdown(): Promise<MarkdownItInstance> {
-  // @ts-expect-error markdown-it has no @types package; it is bundled only into the webview.
-  const mod = (await import('markdown-it')) as { default: MarkdownItCtor };
-  return new mod.default('default', { html: false, linkify: false }).disable([
+function createHardenedMarkdown() {
+  return new MarkdownIt('default', { html: false, linkify: false }).disable([
     'link',
     'autolink',
     'image',
@@ -254,7 +243,7 @@ class FakeElement extends FakeNode {
 
 describe('markdown hardening', () => {
   it('enables GFM tables and strikethrough while disabling HTML, links, images, autolinks, and references', async () => {
-    const md = await createHardenedMarkdown();
+    const md = createHardenedMarkdown();
 
     const tableHtml = md.render('| Col A | Col B |\n| --- | --- |\n| 1 | 2 |');
     expect(tableHtml).toContain('<table>');
@@ -279,7 +268,7 @@ describe('markdown hardening', () => {
   });
 
   it('handles link-reference ReDoS payloads quickly with reference rule disabled', async () => {
-    const md = await createHardenedMarkdown();
+    const md = createHardenedMarkdown();
     const payload = `[a]: ${' '.repeat(20_000)}\n`.repeat(5);
     const start = performance.now();
     md.render(payload);
