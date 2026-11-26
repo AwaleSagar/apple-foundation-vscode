@@ -7,13 +7,18 @@ struct InputError: LocalizedError {
 }
 
 func reason(_ model: SystemLanguageModel) -> String? {
-    guard case let .unavailable(reason) = model.availability else { return nil }
-    switch reason {
-    case .deviceNotEligible: return "This Mac is ineligible for Apple Intelligence."
-    case .appleIntelligenceNotEnabled: return "Enable Apple Intelligence in System Settings."
-    case .modelNotReady: return "Apple Intelligence is preparing the on-device model. Try again after the download completes."
-    @unknown default: return "Apple reports that the on-device model is unavailable (\(reason))."
+    if case let .unavailable(reason) = model.availability {
+        switch reason {
+        case .deviceNotEligible: return "This Mac is ineligible for Apple Intelligence."
+        case .appleIntelligenceNotEnabled: return "Enable Apple Intelligence in System Settings."
+        case .modelNotReady: return "Apple Intelligence is preparing the on-device model. Try again after the download completes."
+        @unknown default: return "Apple reports that the on-device model is unavailable (\(reason))."
+        }
     }
+    if !model.supportsLocale(Locale.current) {
+        return "Apple Intelligence does not support the current macOS language or region. Switch to a supported language in System Settings > General > Language & Region."
+    }
+    return nil
 }
 
 func contextSize(_ model: SystemLanguageModel) -> Int {
@@ -27,10 +32,43 @@ func contextSize(_ model: SystemLanguageModel) -> Int {
 
 func errorMessage(_ error: Error) -> String {
     let overflow = "The model context window is full. Shorten the selection, diff, or message."
+    let guardrail = "Apple's on-device safety guardrails blocked this request. Rephrase the prompt or remove sensitive content."
+    let assetsUnavailable = "Apple Intelligence model assets are currently unavailable. Wait for macOS to finish downloading them in System Settings > Apple Intelligence & Siri, then retry."
+    let unsupportedLocale = "Apple Intelligence does not support the language or locale of this request. Switch to a supported language or write the prompt in a supported language."
+    let rateLimited = "Apple Intelligence is temporarily rate-limited. Wait a moment and retry."
+    let concurrent = "Another Apple Intelligence request is already running. Wait for it to finish and retry."
+    let refusal = "The on-device model refused this request. Rephrase the prompt and try again."
+
     #if SDK_27
-    if #available(macOS 27, *), case LanguageModelError.contextSizeExceeded = error { return overflow }
+    if #available(macOS 27, *) {
+        if let modelError = error as? LanguageModelError {
+            switch modelError {
+            case .contextSizeExceeded: return overflow
+            case .guardrailViolation: return guardrail
+            case .unsupportedLanguageOrLocale: return unsupportedLocale
+            case .rateLimited: return rateLimited
+            case .refusal: return refusal
+            case .timeout: return "The on-device model timed out. Retry or shorten the request."
+            default: break
+            }
+        }
+        if case SystemLanguageModel.Error.assetsUnavailable = error { return assetsUnavailable }
+        if case LanguageModelSession.Error.concurrentRequests = error { return concurrent }
+    }
     #endif
-    if case LanguageModelSession.GenerationError.exceededContextWindowSize = error { return overflow }
+    if let generationError = error as? LanguageModelSession.GenerationError {
+        switch generationError {
+        case .exceededContextWindowSize: return overflow
+        case .guardrailViolation: return guardrail
+        case .assetsUnavailable: return assetsUnavailable
+        case .unsupportedLanguageOrLocale: return unsupportedLocale
+        case .rateLimited: return rateLimited
+        case .concurrentRequests: return concurrent
+        case .refusal: return refusal
+        case .unsupportedGuide, .decodingFailure: break
+        @unknown default: break
+        }
+    }
     return error.localizedDescription
 }
 

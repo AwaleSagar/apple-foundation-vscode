@@ -22,6 +22,9 @@ export interface HelperLogger {
   error(message: string): void;
 }
 
+const GATEKEEPER_HINT =
+  'Reinstall Local Chat from the Marketplace, or if installed from a downloaded VSIX, clear quarantine with `xattr -dr com.apple.quarantine` on the extension folder.';
+
 function formatSpawnError(error: Error): Error {
   const code = (error as NodeJS.ErrnoException).code;
   if (code === 'ENOENT' || code === 'EACCES') {
@@ -29,7 +32,25 @@ function formatSpawnError(error: Error): Error {
       'The bundled local helper could not be started (binary missing or not executable). Reinstall Local Chat for macOS (Apple Silicon).',
     );
   }
+  if (code === 'EPERM') {
+    return new Error(
+      `macOS blocked the bundled local helper (EPERM, likely Gatekeeper or quarantine). ${GATEKEEPER_HINT}`,
+    );
+  }
   return error;
+}
+
+function formatExitError(
+  code: number | null,
+  signal: NodeJS.Signals | null,
+  receivedOutput: boolean,
+): Error {
+  if (signal === 'SIGKILL' && !receivedOutput) {
+    return new Error(
+      `macOS terminated the bundled local helper on launch (SIGKILL, likely Gatekeeper or quarantine). ${GATEKEEPER_HINT}`,
+    );
+  }
+  return new Error(`Local helper exited (${signal ?? code}). Retry to restart it.`);
 }
 
 interface Pending {
@@ -68,23 +89,35 @@ export class Connection {
       if (log && !this.closed) this.logger?.error(error.message);
       this.close(error);
     };
+    let receivedOutput = false;
+    let exitCode: number | null = null;
+    let exitSignal: NodeJS.Signals | null = null;
     child.on('error', (error) => failed(formatSpawnError(error)));
     child.stdin.on('error', (error) => failed(error));
     child.stderr.on('error', (error) => failed(error));
     child.stdout.on('error', (error) => failed(error));
+    child.on('exit', (code, signal) => {
+      exitCode = code;
+      exitSignal = signal;
+    });
     child.on('close', (code, signal) =>
-      failed(
-        new Error(`Local helper exited (${signal ?? code}). Retry to restart it.`),
-        code !== 0 || signal !== null,
-      ),
+      failed(formatExitError(code, signal, receivedOutput), code !== 0 || signal !== null),
     );
-    child.stdout.on('end', () =>
-      failed(new Error('The local helper closed its output. Retry the request.')),
-    );
+    child.stdout.on('end', () => {
+      if (exitCode !== null || exitSignal !== null) {
+        failed(
+          formatExitError(exitCode, exitSignal, receivedOutput),
+          exitCode !== 0 || exitSignal !== null,
+        );
+        return;
+      }
+      failed(new Error('The local helper closed its output. Retry the request.'));
+    });
     const frames = new FrameReader();
     const receive = (body: Buffer) => this.receive(body.readUInt32LE(1), decodeReply(body));
     child.stdout.on('data', (chunk: Buffer) => {
       if (this.closed) return;
+      receivedOutput = true;
       try {
         frames.push(chunk, receive);
       } catch {
@@ -96,7 +129,7 @@ export class Connection {
 
   get generating() {
     for (const request of this.pending.values()) {
-      if (request.expected === 'done' && !request.cancelTimeout) return true;
+      if (request.expected === 'done') return true;
     }
     return false;
   }
@@ -197,13 +230,15 @@ export class Connection {
     clearTimeout(this.idle);
     clearTimeout(this.watchdog);
     this.onClose();
-    this.child.kill();
-    if (this.child.exitCode === null && this.child.signalCode === null) {
-      setTimeout(() => {
-        if (this.child.exitCode === null && this.child.signalCode === null) {
-          this.child.kill('SIGKILL');
-        }
-      }, FORCE_KILL_MS).unref();
+    if (this.child.pid !== undefined) {
+      this.child.kill();
+      if (this.child.exitCode === null && this.child.signalCode === null) {
+        setTimeout(() => {
+          if (this.child.exitCode === null && this.child.signalCode === null) {
+            this.child.kill('SIGKILL');
+          }
+        }, FORCE_KILL_MS).unref();
+      }
     }
     for (const pending of this.pending.values()) {
       pending.subscription?.dispose();

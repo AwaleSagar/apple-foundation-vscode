@@ -10,12 +10,20 @@ vi.mock('../core/availability', () => ({
   checkHost: () => ({ available: true }),
 }));
 
-function child() {
+function child(
+  overrides: {
+    pid?: number | undefined;
+    exitCode?: number | null;
+    signalCode?: NodeJS.Signals | null;
+  } = {},
+) {
   const process = Object.assign(new EventEmitter(), {
+    pid: 1234 as number | undefined,
     stdout: new PassThrough(),
     stdin: new PassThrough(),
     stderr: new PassThrough(),
     kill: vi.fn(),
+    ...overrides,
   });
   vi.mocked(spawn).mockReturnValueOnce(process as unknown as ReturnType<typeof spawn>);
   return process;
@@ -96,7 +104,7 @@ it('cancels only the addressed stream and ignores its in-flight output', async (
   helper.stdout.write(frame(id, 4));
   helper.stdout.write(frame(id, 3, Buffer.from('🌿')));
   stop.cancel();
-  expect(client.generating).toBe(false);
+  expect(client.generating).toBe(true);
   expect(helper.stdin.read()).toEqual(frame(id, 4));
   const count = client.count('🌿', token());
   const countId = helper.stdin.read().readUInt32LE(5);
@@ -109,6 +117,7 @@ it('cancels only the addressed stream and ignores its in-flight output', async (
   );
   await expect(generation).rejects.toThrow('Cancelled');
   await expect(count).resolves.toBe(3);
+  expect(client.generating).toBe(false);
   expect(trimmed).toHaveBeenCalledOnce();
   expect(delta.mock.calls).toEqual([['🌿']]);
 });
@@ -205,4 +214,59 @@ it('formats ENOENT spawn errors clearly and forwards stderr and errors to the lo
   await expect(status).resolves.toHaveProperty('context', 4096);
   expect(logger.warn).toHaveBeenCalledWith('helper stderr: diagnostic warning');
   logged.dispose();
+});
+
+it('keeps generating true while a cancelled generation is still draining native work', async () => {
+  const helper = child();
+  const stop = token();
+  const generation = client.generate([], options, stop, vi.fn());
+  const id = helper.stdin.read().readUInt32LE(5);
+  expect(client.generating).toBe(true);
+
+  stop.cancel();
+  await expect(generation).rejects.toThrow('Cancelled');
+  expect(client.generating).toBe(true);
+
+  helper.stdout.write(frame(id, 6));
+  expect(client.generating).toBe(false);
+});
+
+it('surfaces Gatekeeper hints on EPERM and immediate SIGKILL and skips SIGKILL escalation without a pid', async () => {
+  vi.useFakeTimers();
+
+  const blocked = child({ pid: undefined, exitCode: null, signalCode: null });
+  const epermPending = client.status();
+  blocked.emit('error', Object.assign(new Error('spawn EPERM'), { code: 'EPERM' }));
+  await expect(epermPending).rejects.toThrow(/Gatekeeper|quarantine/);
+  vi.advanceTimersByTime(5_000);
+  expect(blocked.kill).not.toHaveBeenCalled();
+
+  const killedOnLaunch = child({ exitCode: null, signalCode: null });
+  const sigkillPending = client.status();
+  killedOnLaunch.emit('close', null, 'SIGKILL');
+  await expect(sigkillPending).rejects.toThrow(/Gatekeeper|quarantine/);
+
+  const killedBeforeStdoutEnd = child({ exitCode: null, signalCode: null });
+  const exitThenEndPending = client.status();
+  killedBeforeStdoutEnd.emit('exit', null, 'SIGKILL');
+  killedBeforeStdoutEnd.stdout.end();
+  await expect(exitThenEndPending).rejects.toThrow(/Gatekeeper|quarantine/);
+
+  const killedLater = child({ exitCode: null, signalCode: null });
+  const ok = client.status();
+  killedLater.stdout.write(
+    frame(killedLater.stdin.read().readUInt32LE(5), 1, Buffer.from([0, 16, 0, 0, 1])),
+  );
+  await expect(ok).resolves.toHaveProperty('context', 4096);
+  const afterOutput = client.status();
+  killedLater.emit('close', null, 'SIGKILL');
+  await expect(afterOutput).rejects.toThrow('Local helper exited (SIGKILL). Retry to restart it.');
+
+  const hung = child({ exitCode: null, signalCode: null });
+  const stalled = client.status();
+  vi.advanceTimersByTime(120_000);
+  await expect(stalled).rejects.toThrow('stopped responding');
+  expect(hung.kill).toHaveBeenCalledTimes(1);
+  vi.advanceTimersByTime(2_000);
+  expect(hung.kill).toHaveBeenCalledWith('SIGKILL');
 });

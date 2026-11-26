@@ -18,8 +18,15 @@ struct ModelInput {
 }
 
 func prepareInput(_ input: [Message], model: SystemLanguageModel, budget: Int) async throws -> ModelInput {
+    // FoundationModels only accepts a single leading .instructions entry, so fold
+    // any system messages into it and keep conversation turns strictly user/assistant.
+    var systemParts: [String] = []
     var messages: [Message] = []
     for message in input where !message.content.isEmpty {
+        if message.role == .system {
+            systemParts.append(message.content)
+            continue
+        }
         if messages.last?.role == message.role {
             messages[messages.count - 1].content += "\n\n"
             messages[messages.count - 1].content += message.content
@@ -30,10 +37,12 @@ func prepareInput(_ input: [Message], model: SystemLanguageModel, budget: Int) a
     guard let prompt = messages.last, prompt.role == .user else {
         throw InputError("A user message is required.")
     }
-    let first = messages.first?.role == .system ? 1 : 0
+    let systemMessage = systemParts.isEmpty
+        ? nil
+        : Message(role: .system, content: systemParts.joined(separator: "\n\n"))
     let lastIndex = messages.count - 1
     var starts: [Int] = []
-    var cursor = first
+    var cursor = 0
     while cursor < lastIndex {
         starts.append(cursor)
         if messages[cursor].role == .user, cursor + 1 < lastIndex, messages[cursor + 1].role == .assistant {
@@ -44,10 +53,10 @@ func prepareInput(_ input: [Message], model: SystemLanguageModel, budget: Int) a
     }
     starts.append(lastIndex)
     let units = starts.count - 1
-    let instructions = first == 1 ? messages[0].entry : nil
+    let instructions = systemMessage?.entry
     func entries(start: Int) -> [Transcript.Entry] {
         var result: [Transcript.Entry] = []
-        result.reserveCapacity(first + messages.count - start)
+        result.reserveCapacity((instructions == nil ? 0 : 1) + messages.count - start)
         if let instructions { result.append(instructions) }
         for message in messages[start...] { result.append(message.entry) }
         return result
@@ -56,7 +65,7 @@ func prepareInput(_ input: [Message], model: SystemLanguageModel, budget: Int) a
     // Bytes only choose the first probe. Apple's count decides every boundary.
     // Starting near the recent end avoids materializing a huge discarded prefix.
     func cost(_ message: Message) -> Int { message.content.utf8.count + 12 }
-    let framing = 8 + (first == 1 ? cost(messages[0]) : 0)
+    let framing = 8 + (systemMessage.map(cost) ?? 0)
     var bytes = framing + cost(messages[lastIndex])
     var keptIndex = units
     while keptIndex > 0 {

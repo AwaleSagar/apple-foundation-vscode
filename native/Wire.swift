@@ -97,17 +97,36 @@ enum Reply {
 
     @MainActor
     func send(to id: UInt32) {
+        if case let .delta(text) = self, text.utf8.count > maxBodyBytes - 5 {
+            let maxChunk = maxBodyBytes - 5
+            let utf8 = text.utf8
+            var start = utf8.startIndex
+            while start < utf8.endIndex {
+                let remaining = utf8.distance(from: start, to: utf8.endIndex)
+                var end = remaining <= maxChunk ? utf8.endIndex : utf8.index(start, offsetBy: maxChunk)
+                if end < utf8.endIndex {
+                    while end > start, (utf8[end] & 0xC0) == 0x80 {
+                        utf8.formIndex(before: &end)
+                    }
+                }
+                Reply.delta(String(decoding: utf8[start ..< end], as: UTF8.self)).send(to: id)
+                start = end
+            }
+            return
+        }
         var frame = Data(count: 4)
         func append(_ tag: UInt8, value: Int? = nil) {
             frame.append(tag)
             frame.appendUInt32(id)
-            if let value { frame.appendUInt32(UInt32(value)) }
+            if let value { frame.appendUInt32(UInt32(clamping: value)) }
         }
         switch self {
         case let .status(context, exact, reason):
             append(1, value: context)
             frame.append(exact ? 1 : 0)
-            if let reason { frame.append(contentsOf: reason.utf8) }
+            if let reason {
+                appendTruncatedUTF8(reason, to: &frame, maxBytes: maxBodyBytes - (frame.count - 4))
+            }
         case let .count(value): append(2, value: value)
         case let .delta(text):
             append(3)
@@ -117,13 +136,28 @@ enum Reply {
         case .cancelled: append(6)
         case let .error(text):
             append(7)
-            frame.append(contentsOf: text.utf8)
+            appendTruncatedUTF8(text, to: &frame, maxBytes: maxBodyBytes - (frame.count - 4))
         }
-        var size = UInt32(frame.count - 4).littleEndian
+        var size = UInt32(clamping: frame.count - 4).littleEndian
         withUnsafeBytes(of: &size) { frame.replaceSubrange(0 ..< 4, with: $0) }
         do { try FileHandle.standardOutput.write(contentsOf: frame) }
         catch { exit(EXIT_FAILURE) }
     }
+}
+
+private func appendTruncatedUTF8(_ text: String, to frame: inout Data, maxBytes: Int) {
+    let utf8 = text.utf8
+    guard utf8.count > maxBytes else {
+        frame.append(contentsOf: utf8)
+        return
+    }
+    let limit = max(0, maxBytes - 3)
+    var end = utf8.index(utf8.startIndex, offsetBy: limit)
+    while end > utf8.startIndex, (utf8[end] & 0xC0) == 0x80 {
+        utf8.formIndex(before: &end)
+    }
+    frame.append(contentsOf: utf8[..<end])
+    if maxBytes >= 3 { frame.append(contentsOf: "...".utf8) }
 }
 
 private extension Data {
