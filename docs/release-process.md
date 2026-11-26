@@ -11,7 +11,7 @@ flowchart LR
     Main -->|changesets action| VP[Version Packages PR\nversion bump + CHANGELOG]
     VP -->|maintainer merges| Tag[Git tag\napple-foundation-vscode@X.Y.Z]
     Tag --> VSIX[CI builds darwin-arm64 VSIX\nattached to GitHub Release]
-    VSIX -.manual gate.-> MP[VS Code Marketplace]
+    VSIX --> MP[VS Code Marketplace]
 ```
 
 1. **Contributor** adds a changeset (`pnpm changeset`) in the feature PR describing the semver
@@ -21,9 +21,11 @@ flowchart LR
    `package.json`, and rewrites `CHANGELOG.md`.
 3. **A maintainer merges the Version Packages PR** — this is the release decision. The workflow
    tags `apple-foundation-vscode@X.Y.Z`, packages the VSIX, and uploads it to the GitHub Release.
-4. **Marketplace publish** is currently a manual step (commented out in
-   `.github/workflows/release.yml`) until the publisher account and `VSCE_PAT` secret are
-   provisioned. To enable: create the publisher, add the secret, uncomment the step.
+4. **Marketplace publish** runs right after the GitHub Release upload and sends that same
+   signed, notarized VSIX to the Marketplace. It needs the `sagarawale` publisher to exist and
+   an Azure DevOps personal access token with the **Marketplace (Manage)** scope stored as the
+   `VSCE_PAT` Actions secret. If the secret is missing, the step fails and the VSIX stays on the
+   GitHub Release only.
 
 ## Versioning policy
 

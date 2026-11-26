@@ -83,8 +83,18 @@ jobs:
           fi
           gh release upload "$tag" ./*.vsix --clobber
 
-      # Marketplace publishing is intentionally a manual gate until the
-      # publisher account is provisioned. See docs/release-process.md.
-      # - name: Publish to Marketplace
-      #   if: steps.changesets.outputs.published == 'true'
-      #   run: pnpm exec vsce publish --packagePath ./*.vsix -p ${{ secrets.VSCE_PAT }}
+      # Publishes the same signed, notarized VSIX that was attached to the
+      # GitHub release. vsce reads the token from VSCE_PAT, so it never
+      # appears on the command line. See docs/release-process.md.
+      - name: Publish to Marketplace
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -eu
+          if [ -z "${VSCE_PAT:-}" ]; then
+            echo "::error::The VSCE_PAT secret is not set. The VSIX is on the GitHub release but was not published to the Marketplace."
+            exit 1
+          fi
+          version="$(node -p "require('./package.json').version")"
+          pnpm exec vsce publish --packagePath "./apple-foundation-vscode-darwin-arm64-${version}.vsix"
