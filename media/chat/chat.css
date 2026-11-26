@@ -185,6 +185,85 @@ form {
   color: inherit;
   background: transparent;
 }
+.answer .code-block {
+  margin: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--vscode-textCodeBlock-background);
+  overflow: hidden;
+}
+.answer .code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px 4px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(
+    --vscode-editorWidget-background,
+    var(--vscode-sideBarSectionHeader-background, transparent)
+  );
+}
+.answer .code-lang {
+  color: var(--muted);
+  font-size: max(11px, 0.85em);
+  font-family: var(--vscode-editor-font-family, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.answer .copy-code {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--vscode-button-secondaryBackground, transparent);
+  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  font-size: max(11px, 0.85em);
+  line-height: 1.4;
+}
+.answer .copy-code:hover {
+  background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+}
+.answer .copy-code[data-copied="true"] {
+  color: var(--vscode-testing-iconPassed, var(--vscode-foreground));
+  border-color: var(--vscode-testing-iconPassed, var(--line));
+}
+.answer .code-block > pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.answer .table-wrap {
+  margin: 8px 0;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.answer table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 8px 0;
+  font-size: 0.95em;
+}
+.answer .table-wrap > table {
+  margin: 0;
+}
+.answer th,
+.answer td {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  text-align: start;
+  vertical-align: top;
+}
+.answer thead th {
+  font-weight: 600;
+  background: var(--vscode-editorWidget-background, var(--vscode-textCodeBlock-background));
+}
+.answer tbody tr:nth-child(even) {
+  background: var(--vscode-list-hoverBackground, transparent);
+}
 .answer blockquote {
   padding-inline-start: 12px;
   border-left: 2px solid var(--vscode-textBlockQuote-border);

@@ -27,7 +27,7 @@ export function chatView(webview: vscode.Webview, root: vscode.Uri) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}'">
   <link rel="stylesheet" href="${asset(media, 'chat.css')}">
   <title>Local Chat</title>
 </head>
@@ -41,7 +41,7 @@ export function chatView(webview: vscode.Webview, root: vscode.Uri) {
         <div class="starters" role="group" aria-label="Workspace actions">
           <button type="button" data-action="explain" aria-describedby="context-hint" disabled>${icon('code')}Explain selection</button>
           <button type="button" data-action="doc" aria-describedby="context-hint" disabled>${icon('note')}Document selection</button>
-          <button type="button" data-action="commit">${icon('commit')}Draft commit message</button>
+          <button type="button" data-action="commit" disabled>${icon('commit')}Draft commit message</button>
         </div>
       </div>
     </section>

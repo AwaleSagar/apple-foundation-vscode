@@ -4,9 +4,39 @@ import * as vscode from 'vscode';
 import { turnContext } from '../chat/context';
 import { buildMessages } from '../chat/prompts';
 import { readLimits } from '../core/config';
-import { type HistoryTurn, prependHistory } from '../core/history';
+import { type HistoryTurn, prependHistory, takeRecentHistory } from '../core/history';
 import type { NativeClient } from '../native/client';
 import { chatView } from './chatView';
+
+export const MAX_HISTORY_TURNS = 40;
+export const MAX_HISTORY_CHARS = 128_000;
+
+export function boundHistory(
+  history: readonly HistoryTurn[],
+  maxTurns = MAX_HISTORY_TURNS,
+  maxChars = MAX_HISTORY_CHARS,
+): HistoryTurn[] {
+  let recent = takeRecentHistory(history, maxTurns);
+  while (recent[0]?.role === 'assistant') {
+    recent = recent.slice(1);
+  }
+  if (maxChars <= 0) return [];
+  let totalChars = recent.reduce((sum, turn) => sum + turn.content.length, 0);
+  let start = 0;
+  while (start < recent.length && totalChars > maxChars) {
+    const first = recent[start];
+    const next = recent[start + 1];
+    if (!first) break;
+    if (first.role === 'user' && next?.role === 'assistant') {
+      totalChars -= first.content.length + next.content.length;
+      start += 2;
+    } else {
+      totalChars -= first.content.length;
+      start += 1;
+    }
+  }
+  return start === 0 ? recent : recent.slice(start);
+}
 
 interface Exchange {
   format: 'markdown' | 'code' | 'text';
@@ -57,8 +87,13 @@ export class LocalChat implements vscode.WebviewViewProvider {
           if (typeof message.text === 'string') this.draft = message.text;
           break;
         case 'action':
-          if (['explain', 'doc', 'commit'].includes(message.action) && !this.active)
-            await this.run(message.action);
+          if (['explain', 'doc', 'commit'].includes(message.action)) {
+            if (this.active) {
+              this.sync();
+            } else {
+              await this.run(message.action);
+            }
+          }
           break;
         case 'stop':
           this.stop();
@@ -68,12 +103,20 @@ export class LocalChat implements vscode.WebviewViewProvider {
             if (this.active) {
               this.draft = message.text;
               this.sync();
+              this.post({
+                type: 'restoreDraft',
+                conversationId: this.conversationId,
+                text: message.text,
+              });
               void vscode.window.showInformationMessage(
                 'Stop the current reply before starting another.',
               );
             } else {
+              this.draft = '';
               await this.run(undefined, message.text.trim());
             }
+          } else {
+            this.sync();
           }
           break;
       }
@@ -208,11 +251,13 @@ export class LocalChat implements vscode.WebviewViewProvider {
         },
       );
       const user = current.find((message) => message.role === 'user');
-      if (user && activeTurn.assistant.trim() && this.active === cancellation)
-        this.history.push(
+      if (user && activeTurn.assistant.trim() && this.active === cancellation) {
+        this.history = boundHistory([
+          ...this.history,
           { role: 'user', content: user.content },
           { role: 'assistant', content: activeTurn.assistant },
-        );
+        ]);
+      }
       return activeTurn.assistant;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
